@@ -1,0 +1,35 @@
+[project]
+name = "Fintrack"
+version = "0.1.0"
+description = "Example project using fastapi-scaffold-with-auth"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]>=0.128.0",
+    "sqlmodel>=0.0.32",
+    "alembic>=1.18.0",
+    "pydantic-settings>=2.12.0",
+    "pyjwt>=2.11.0",
+    "pwdlib[argon2]>=0.3.0",
+    "slowapi>=0.1.9",
+    "python-multipart>=0.0.6",
+    "email-validator>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+]
+
+postgres = ["psycopg[binary]>=3.1.0"]
+mysql = ["mysql-connector-python>=8.0.0"]
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "modules*", "alembic*"]
