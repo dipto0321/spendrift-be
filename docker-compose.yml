@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,7 +15,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fastapi_db}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fastapi_db}
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
     depends_on:
       - postgres

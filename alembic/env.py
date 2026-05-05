@@ -1,12 +1,20 @@
 """
 Alembic configuration for database migrations.
 """
+
 from logging.config import fileConfig
+from pathlib import Path
+import sys
+
+# Ensure project root is importable so `app` and `modules` resolve in Alembic
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from alembic import context
+import alembic.context as context
 from app.core.config import settings
 from sqlmodel import SQLModel
 
