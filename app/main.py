@@ -5,7 +5,6 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.api import api_router as v1_router
-from app.core.database import create_db_tables
 from app.core.logging_config import setup_logging
 from app.middleware.rate_limit import limiter
 
@@ -14,8 +13,8 @@ setup_logging()
 
 # Create FastAPI app
 app = FastAPI(
-    title="FastAPI Scaffold with Auth",
-    description="Production-ready FastAPI template with authentication, migrations, rate limiting, and logging",
+    title="Financial tracker API",
+    description="An app which helps you to track your expenses and income, manage budgets, and gain insights into your financial habits.",
     version="1.0.0",
 )
 
@@ -26,12 +25,6 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # ty
 
 # Include routers
 app.include_router(v1_router)
-
-
-@app.on_event("startup")
-def startup():
-    """Initialize database on startup."""
-    create_db_tables()
 
 
 @app.get("/health", tags=["health"])
@@ -62,9 +55,3 @@ async def internal_error_handler(request: Request, exc: Exception) -> JSONRespon
         status_code=500,
         content={"detail": "Internal Server Error"},
     )
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
