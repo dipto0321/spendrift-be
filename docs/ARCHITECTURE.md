@@ -453,11 +453,11 @@ Seeded automatically when a new tracker is created:
 
 ### Phase 1 — Trackers & Categories
 
-- [ ] Tracker model (`modules/trackers/model.py`)
-- [ ] Tracker schemas (`modules/trackers/schema.py`)
-- [ ] Tracker repository (`modules/trackers/repo.py`)
-- [ ] Tracker service (`modules/trackers/service.py`)
-- [ ] Tracker router (`modules/trackers/router.py`)
+- [x] Tracker model (`modules/trackers/model.py`)
+- [x] Tracker schemas (`modules/trackers/schema.py`)
+- [x] Tracker repository (`modules/trackers/repo.py`)
+- [x] Tracker service (`modules/trackers/service.py`)
+- [x] Tracker router (`modules/trackers/router.py`)
 - [ ] Category model (`modules/categories/model.py`)
 - [ ] Category schemas, repo, service, router
 - [ ] Default category seeding on tracker creation
