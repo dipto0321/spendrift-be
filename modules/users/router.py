@@ -66,8 +66,4 @@ async def get_current_user_info(
     current_user=Depends(get_current_user),
 ):
     """Get current user information."""
-    return UserResponse(
-        id=current_user.id,
-        email=current_user.email,
-        is_active=current_user.is_active,
-    )
+    return UserResponse.model_validate(current_user)

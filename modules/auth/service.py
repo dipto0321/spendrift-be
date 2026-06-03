@@ -12,23 +12,23 @@ from sqlmodel import Session
 logger = logging.getLogger(__name__)
 
 
-def register_user(db: Session, user_create: RegisterSchema) -> User:
+def register_user(session: Session, user_create: RegisterSchema) -> User:
     """Register a new user."""
     try:
-        existing_user = get_user_by_email(db, user_create.email)
+        existing_user = get_user_by_email(session, user_create.email)
         if existing_user:
             raise HTTPException(
                 status_code=400, detail="User with this email already exists"
             )
 
         password_hash = get_password_hash(user_create.password)
-        return create_user(db, user_create, password_hash)
+        return create_user(session, user_create, password_hash)
 
     except HTTPException:
         raise
 
     except IntegrityError as e:
-        db.rollback()
+        session.rollback()
         logger.error(
             f"Database integrity error during user registration: {e}", exc_info=True
         )
@@ -37,7 +37,7 @@ def register_user(db: Session, user_create: RegisterSchema) -> User:
         ) from e
 
     except SQLAlchemyError as e:
-        db.rollback()
+        session.rollback()
         logger.error(f"Database error during user registration: {e}", exc_info=True)
         raise HTTPException(
             status_code=503, detail="Database service temporarily unavailable"
@@ -50,9 +50,9 @@ def register_user(db: Session, user_create: RegisterSchema) -> User:
         ) from e
 
 
-def authenticate_user(db: Session, email: str, password: str) -> User | None:
+def authenticate_user(session: Session, email: str, password: str) -> User | None:
     """Authenticate user with email and password."""
-    user = get_user_by_email(db, email)
+    user = get_user_by_email(session, email)
     if not user or not verify_password(password, user.hashed_password):
         return None
     return user

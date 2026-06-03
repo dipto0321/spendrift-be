@@ -32,27 +32,27 @@ dev:
 
 migrations:
 	@read -p "Enter migration message: " msg; \
-	alembic revision --autogenerate -m "$$msg"
+	uv run alembic revision --autogenerate -m "$$msg"
 
 upgrade:
-	alembic upgrade head
+	uv run alembic upgrade head
 
 downgrade:
-	alembic downgrade -1
+	uv run alembic downgrade -1
 
 run:
-	fastapi dev app/main.py --host 0.0.0.0 --port 8000 --reload
+	uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000 --reload
 
 test:
-	pytest -v --cov=. --cov-report=html
+	uv run pytest -v --cov=. --cov-report=html
 
 lint:
-	ruff check . --show-source || true
-	mypy app modules
+	uv run ruff check . || true
+	uv run mypy app modules
 
 format:
-	black .
-	ruff check . --fix
+	uv run ruff format .
+	uv run ruff check . --fix
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
@@ -60,4 +60,4 @@ clean:
 	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist *.egg-info
 
 db-init:
-	alembic current
+	uv run alembic current

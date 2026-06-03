@@ -10,7 +10,7 @@ FinTracker is a personal finance tracking application with a tracker-based archi
 
 | Layer | Technology |
 |---|---|
-| Framework | FastAPI (Python 3.12+) |
+| Framework | FastAPI (Python >=3.11) |
 | ORM | SQLModel (SQLAlchemy 2.0 under the hood) |
 | Migrations | Alembic |
 | Database | PostgreSQL 16 (Neon in production, Docker locally) |
@@ -63,6 +63,7 @@ backend/
 │   │   ├── router.py                 # POST /register, POST /login
 │   │   ├── schema.py                 # RegisterSchema, LoginSchema, TokenResponse
 │   │   └── service.py                # register_user, authenticate_user
+│   │   (reuses modules/users/model.py and modules/users/repo.py)
 │   ├── users/
 │   │   ├── model.py                  # User SQLModel (table=True)
 │   │   ├── repo.py                   # create_user, get_user_by_email, get_user_by_id
@@ -76,7 +77,7 @@ backend/
 │   └── reports/                      # 🆕 To be created
 │
 ├── tests/                            # 🆕 To be created
-├── docs/                             # 🆕 Architecture docs
+├── docs/                             # Architecture documentation
 │   └── ARCHITECTURE.md
 │
 ├── docker-compose.yml                # PostgreSQL 16 + API service
@@ -101,12 +102,13 @@ backend/
 │ email          VARCHAR  │← unique, indexed
 │ hashed_password VARCHAR │
 │ is_active       BOOLEAN │← default: true
+│ updated_at    DATETIME  │← auto (onupdate)
 │ created_at    DATETIME  │← indexed, auto
 └────────────┬────────────┘
              │ 1:N
              ▼
 ┌─────────────────────────┐
-│     refresh_tokens      │
+│     refresh_tokens      │← 🆕 Not yet created
 ├─────────────────────────┤
 │ id              UUID PK │
 │ user_id        UUID FK  │→ users.id (CASCADE)
@@ -122,9 +124,9 @@ backend/
 │ id              UUID PK │
 │ user_id        UUID FK  │→ users.id (CASCADE)
 │ name           VARCHAR  │
-│ currency       VARCHAR  │← e.g. "BDT", "EUR"
-│ created_at    DATETIME  │
+│ color          VARCHAR  │
 │ updated_at    DATETIME  │
+│ created_at    DATETIME  │
 └────────────┬────────────┘
              │ 1:N
              ├───────────────────────────────┐
@@ -202,17 +204,17 @@ http://localhost:8000/api/v1
 
 | Method | Path | Body | Response | Auth | Rate Limit |
 |---|---|---|---|---|---|
-| POST | `/auth/register` | `{ email, password }` | `{ id, email, is_active }` | No | 3/min |
+| POST | `/auth/register` | `{ email, password }` | `{ access_token, refresh_token, token_type }` | No | 3/min |
 | POST | `/auth/login` | `{ email, password }` | `{ access_token, refresh_token, token_type }` | No | 5/min |
-| POST | `/auth/refresh` | `{ refresh_token }` | `{ access_token, refresh_token }` | Refresh | — |
-| POST | `/auth/sign-out` | `{ refresh_token }` | `{ detail }` | Yes | — |
+| POST | `/auth/refresh` | `{ refresh_token }` | `{ access_token, refresh_token }` | Refresh | — | 🆕 Not yet implemented |
+| POST | `/auth/sign-out` | `{ refresh_token }` | `{ detail }` | Yes | — | 🆕 Not yet implemented |
 
 ### Users
 
 | Method | Path | Body | Response | Auth |
 |---|---|---|---|---|
 | GET | `/users/me` | — | `{ id, email, is_active }` | Yes |
-| PUT | `/users/me` | `{ name?, email? }` | `{ id, email, is_active }` | Yes |
+| PUT | `/users/me` | `{ email? }` | `{ id, email, is_active }` | Yes |
 | PUT | `/users/me/password` | `{ current_password, new_password }` | `{ detail }` | Yes |
 
 ### Trackers
@@ -341,8 +343,8 @@ http://localhost:8000/api/v1
 │  Client  │                                      │  Server  │
 └────┬─────┘                                      └────┬─────┘
      │                                                  │
-     │  POST /auth/sign-in                               │
-     │  { email, password }                              │
+      │  POST /auth/login                                  │
+      │  { email, password }                              │
      │ ──────────────────────────────────────────────►   │
      │                                                   │  Verify credentials
      │                                                   │  Generate access_token (30min)
@@ -626,4 +628,4 @@ make format           # black + ruff fix
 
 ---
 
-*Last updated: 2026-05-28*
+*Last updated: 2026-06-03*
