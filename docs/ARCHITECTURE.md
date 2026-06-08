@@ -194,6 +194,10 @@ The API validates that the requested `tracker_id` belongs to the authenticated u
 
 When a model field is added, removed, or renamed, update the matching schema, service, and repo code, then create a new Alembic migration with `make migrations`. Do not edit existing migration files.
 
+### Git Rules
+
+Use Conventional Commits for repository changes: `type(scope): summary`. Keep the subject short and imperative, and add a body with bullet points when the change spans multiple files or needs extra context. Commit reproducible files together when they belong to the same change, such as `pyproject.toml` and `uv.lock`, and avoid committing local-only editor or environment files unless the change is meant to be shared.
+
 ---
 
 ## 4. API Endpoints

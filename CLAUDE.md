@@ -174,6 +174,15 @@ Never return data for a `tracker_id` without checking `tracker.user_id == curren
 - Use `make upgrade` to apply
 - Never edit existing migration files — create a new one
 
+## Git Rules
+
+- Use Conventional Commits for commit messages: `type(scope): summary`
+- Keep the subject short, imperative, and lowercase unless the proper noun needs capitals
+- Use a body with bullet points when the change spans multiple files or has important context
+- Commit reproducible project files together when they belong to the same change, such as `pyproject.toml` and `uv.lock`
+- Do not commit local-only editor or environment files unless the change is intentionally shared
+- Prefer focused commits: one logical change per commit
+
 ---
 
 ## API Conventions
