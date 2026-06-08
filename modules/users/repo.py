@@ -1,16 +1,17 @@
 """User repository - data access."""
+
 from uuid import UUID
+
+from sqlmodel import Session, select
 
 from modules.users.model import User
 from modules.users.schema import UserCreate
-from sqlmodel import Session, select
 
 
 def create_user(session: Session, user_create: UserCreate, password_hash: str) -> User:
     """Create a new user."""
     user = User(
-        email=user_create.email,
-        hashed_password=password_hash,
+        email=user_create.email, hashed_password=password_hash, name=user_create.name
     )
     session.add(user)
     session.commit()

@@ -1,11 +1,11 @@
 """User model."""
 
 from datetime import datetime, timezone
+from typing import ClassVar
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime
 from sqlmodel import Column, Field, SQLModel
-from typing import ClassVar
 
 
 class User(SQLModel, table=True):
@@ -14,6 +14,7 @@ class User(SQLModel, table=True):
     __tablename__: ClassVar[str] = "users"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(max_length=100, index=True)
     email: str = Field(unique=True, index=True)
     hashed_password: str
     is_active: bool = Field(default=True)
