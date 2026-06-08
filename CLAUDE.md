@@ -19,9 +19,9 @@
 |------------|----------------|
 | Auth       | ✅ Complete     |
 | Users      | ✅ Complete     |
-| Trackers   | ❌ Not started  |
-| Categories | ❌ Not started  |
-| Expenses   | ❌ Not started  |
+| Trackers   | ✅ Complete     |
+| Categories | ✅ Complete     |
+| Expenses   | ✅ Complete     |
 | Budgets    | ❌ Not started  |
 | Dashboard  | ❌ Not started  |
 | Reports    | ❌ Not started  |

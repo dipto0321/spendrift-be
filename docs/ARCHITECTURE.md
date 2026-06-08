@@ -474,12 +474,12 @@ Seeded automatically when a new tracker is created:
 
 ### Phase 2 — Expenses
 
-- [ ] Expense model (`modules/expenses/model.py`)
-- [ ] Expense schemas with filter params
-- [ ] Expense repository with query building
-- [ ] Expense service (filtering, sorting)
-- [ ] Expense router with all CRUD + filtering endpoints
-- [ ] Alembic migration for expenses table
+- [x] Expense model (`modules/expenses/model.py`)
+- [x] Expense schemas with filter params
+- [x] Expense repository with query building
+- [x] Expense service (filtering, sorting)
+- [x] Expense router with all CRUD + filtering endpoints
+- [x] Alembic migration for expenses table
 
 ### Phase 3 — Budgets
 
@@ -504,7 +504,6 @@ Seeded automatically when a new tracker is created:
 - [ ] CORS configuration for frontend origin
 - [ ] Database seeding script
 - [ ] Integration tests (pytest + httpx)
-- [ ] API documentation (OpenAPI/Swagger)
 
 ---
 
