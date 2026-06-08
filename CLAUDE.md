@@ -51,6 +51,7 @@ modules/
 ## Conventions to Follow
 
 ### model.py
+
 - Extend `SQLModel` with `table=True`
 - Always use `UUID` PK with `default_factory=uuid4`
 - `created_at` and `updated_at` use `datetime` with `default_factory=lambda: datetime.now(timezone.utc)`
@@ -81,12 +82,14 @@ class Tracker(SQLModel, table=True):
 ```
 
 ### schema.py
+
 - Separate `Create`, `Update`, `Response` schemas
 - `Update` schemas use `Optional` fields (partial updates)
 - `Response` schemas always include `id`, `created_at`
 - Reference existing: `modules/users/schema.py`, `modules/auth/schema.py`
 
 ### repo.py
+
 - Functions receive `session: Session` as first arg
 - Return ORM objects or `None` — no HTTPExceptions here
 - Use `select()` from sqlmodel, not raw SQL strings
@@ -106,6 +109,7 @@ def list_trackers_by_user(session: Session, user_id: UUID) -> list[Tracker]:
 ```
 
 ### service.py
+
 - Functions raise `HTTPException` when something goes wrong
 - Calls repo for data access
 - Handles business rules (ownership check, default seeding, etc.)
@@ -121,6 +125,7 @@ def get_tracker_or_404(session: Session, tracker_id: UUID, user_id: UUID) -> Tra
 ```
 
 ### router.py
+
 - Use `Annotated[Session, Depends(get_session)]` for DB
 - Use `Annotated[User, Depends(get_current_user)]` for auth
 - Keep route functions thin — delegate to service
@@ -163,6 +168,7 @@ Never return data for a `tracker_id` without checking `tracker.user_id == curren
 ## Database Rules
 
 - `tracker_id` is the workspace scope for all data tables
+- When you add, remove, or rename a model field, update the matching schema/service/repo code and create a new Alembic migration with `make migrations`
 - Indexes are defined in Alembic migrations, not in models
 - Migrations live in `alembic/versions/` — always generate with `make migrations`
 - Use `make upgrade` to apply
@@ -176,9 +182,11 @@ Never return data for a `tracker_id` without checking `tracker.user_id == curren
 - Tracker-scoped resources: `/trackers/{tracker_id}/expenses` etc.
 - Responses use snake_case
 - Errors follow this format:
+
   ```json
   { "detail": "Human readable message" }
   ```
+
 - 404 for missing or unauthorized resources (don't reveal existence)
 - 422 for validation errors (Pydantic handles automatically)
 

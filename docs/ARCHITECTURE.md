@@ -190,6 +190,10 @@ user ──→ tracker ──→ { expenses, categories, budgets }
 
 The API validates that the requested `tracker_id` belongs to the authenticated user before any data operation.
 
+### Model Change Rule
+
+When a model field is added, removed, or renamed, update the matching schema, service, and repo code, then create a new Alembic migration with `make migrations`. Do not edit existing migration files.
+
 ---
 
 ## 4. API Endpoints
@@ -391,6 +395,7 @@ http://localhost:8000/api/v1
 ### Refresh Token Rotation
 
 Each refresh request:
+
 1. Validates the incoming refresh token (hash lookup, not revoked, not expired)
 2. Revokes the old token
 3. Issues a new access + refresh token pair
