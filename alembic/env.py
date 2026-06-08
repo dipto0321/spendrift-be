@@ -20,6 +20,9 @@ from sqlmodel import SQLModel
 
 # Import all models to make them available to Alembic
 from modules.users.model import User  # noqa
+from modules.trackers.model import Tracker  # noqa
+from modules.categories.model import Category  # noqa
+from modules.refresh_tokens.model import RefreshToken  # noqa
 
 # this is the Alembic Config object
 config = context.config
