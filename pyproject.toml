@@ -17,12 +17,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "httpx>=0.24.0",
-]
+
 
 
 [build-system]
@@ -32,3 +27,16 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "modules*", "alembic*"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov-report=html --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"
