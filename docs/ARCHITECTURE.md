@@ -467,10 +467,10 @@ Seeded automatically when a new tracker is created:
 - [x] Tracker repository (`modules/trackers/repo.py`)
 - [x] Tracker service (`modules/trackers/service.py`)
 - [x] Tracker router (`modules/trackers/router.py`)
-- [ ] Category model (`modules/categories/model.py`)
-- [ ] Category schemas, repo, service, router
-- [ ] Default category seeding on tracker creation
-- [ ] Alembic migration for trackers + categories tables
+- [x] Category model (`modules/categories/model.py`)
+- [x] Category schemas, repo, service, router
+- [x] Default category seeding on tracker creation
+- [x] Alembic migration for trackers + categories tables
 
 ### Phase 2 — Expenses
 
