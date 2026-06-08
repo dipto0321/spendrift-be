@@ -4,7 +4,7 @@ PYTHON := python3
 .PHONY: help install dev test clean migrations run lint format
 
 help:
-	@echo "FastAPI Scaffold with Auth - Development Commands"
+	@echo "Expense tracker app - Development Commands"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install       Install dependencies"
