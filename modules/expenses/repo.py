@@ -3,7 +3,7 @@
 from datetime import date as date_type
 from uuid import UUID
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from .model import Expense
 from .schema import ExpenseCreate, ExpenseSort, ExpenseType, ExpenseUpdate
@@ -83,11 +83,11 @@ def update_expense(
 
 def count_expenses_by_category(session: Session, category_id: UUID) -> int:
     """Count expenses currently assigned to a category."""
-    return len(
-        session.exec(
-            select(Expense).where(Expense.category_id == category_id)
-        ).all()
-    )
+    return session.exec(
+        select(func.count()).select_from(Expense).where(
+            Expense.category_id == category_id
+        )
+    ).one()
 
 
 def delete_expense(session: Session, expense: Expense) -> None:

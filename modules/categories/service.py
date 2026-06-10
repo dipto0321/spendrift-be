@@ -9,6 +9,7 @@ from sqlmodel import Session
 from modules.categories import repo as category_repo
 from modules.categories.model import Category
 from modules.categories.schema import CategoryCreate, CategoryUpdate
+from modules.expenses import repo as expense_repo
 from modules.trackers import service as tracker_service
 
 logger = logging.getLogger(__name__)
@@ -116,8 +117,23 @@ def update_category(
 def delete_category(
     session: Session, tracker_id: UUID, category_id: UUID, user_id: UUID
 ) -> None:
-    """Delete a category from a tracker."""
+    """Delete a category from a tracker.
+
+    409 if any expenses still reference the category (the DB-level
+    RESTRICT would otherwise surface as an opaque 500).
+    """
     category = get_category_or_404(session, tracker_id, category_id, user_id)
+
+    expense_count = expense_repo.count_expenses_by_category(session, category_id)
+    if expense_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Category has {expense_count} expense(s). "
+                "Reassign or delete them first."
+            ),
+        )
+
     category_repo.delete_category(session, category)
     logger.info(
         "Category deleted: %s from tracker %s by user %s",
