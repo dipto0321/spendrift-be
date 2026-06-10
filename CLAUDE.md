@@ -23,7 +23,7 @@
 | Categories | ✅ Complete     |
 | Expenses   | ✅ Complete     |
 | Budgets    | ✅ Complete     |
-| Dashboard  | ❌ Not started  |
+| Dashboard  | ✅ Complete     |
 | Reports    | ❌ Not started  |
 
 ---
