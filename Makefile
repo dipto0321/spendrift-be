@@ -47,7 +47,7 @@ test:
 	uv run pytest -v --cov=. --cov-report=html
 
 lint:
-	uv run ruff check . || true
+	uv run ruff check app modules tests
 	uv run mypy app modules
 
 format:

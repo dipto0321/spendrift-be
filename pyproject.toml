@@ -37,6 +37,6 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "--cov=app --cov-report=html --cov-report=term-missing"
+addopts = "--cov=app --cov=modules --cov-report=html --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
