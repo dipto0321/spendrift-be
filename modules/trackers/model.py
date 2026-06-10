@@ -18,6 +18,7 @@ class Tracker(SQLModel, table=True):
     currency: str = Field(max_length=10)
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

@@ -28,6 +28,7 @@ class Budget(SQLModel, table=True):
     month: str = Field(max_length=7)  # "YYYY-MM"
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
