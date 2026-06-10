@@ -58,6 +58,8 @@ def list_expenses(
     expense_type: str | None = None,
     search: str | None = None,
     sort: ExpenseSort = ExpenseSort.DATE_DESC,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[Expense]:
     """List expenses for a tracker the user owns, with optional filters."""
     tracker_service.get_tracker_or_404(session, tracker_id, user_id)
@@ -70,6 +72,8 @@ def list_expenses(
         expense_type=expense_type,
         search=search,
         sort=sort,
+        limit=limit,
+        offset=offset,
     )
 
 

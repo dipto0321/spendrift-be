@@ -48,8 +48,13 @@ def list_expenses(
     type: ExpenseType | None = Query(default=None),
     search: str | None = Query(default=None),
     sort: ExpenseSort = Query(default=ExpenseSort.DATE_DESC),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
 ):
-    """List expenses for a tracker workspace, with optional filters."""
+    """List expenses for a tracker workspace, with optional filters.
+
+    Paginated: returns at most `limit` rows starting at `offset`.
+    """
     return expense_service.list_expenses(
         session,
         tracker_id,
@@ -60,6 +65,8 @@ def list_expenses(
         expense_type=type.value if type else None,
         search=search,
         sort=sort,
+        limit=limit,
+        offset=offset,
     )
 
 

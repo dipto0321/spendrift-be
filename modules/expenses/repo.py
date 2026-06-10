@@ -42,8 +42,10 @@ def list_expenses(
     expense_type: str | None = None,
     search: str | None = None,
     sort: ExpenseSort = ExpenseSort.DATE_DESC,
+    limit: int = 50,
+    offset: int = 0,
 ) -> list[Expense]:
-    """List expenses for a tracker, applying optional filters and sorting."""
+    """List expenses for a tracker, with optional filters, sorting, paging."""
     statement = select(Expense).where(Expense.tracker_id == tracker_id)
 
     if start_date is not None:
@@ -61,6 +63,8 @@ def list_expenses(
         statement = statement.order_by(Expense.date.asc())  # type: ignore[attr-defined]
     else:
         statement = statement.order_by(Expense.date.desc())  # type: ignore[attr-defined]
+
+    statement = statement.offset(offset).limit(limit)
 
     return list(session.exec(statement).all())
 
