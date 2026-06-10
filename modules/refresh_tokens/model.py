@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 from typing import ClassVar, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime
 from sqlmodel import Field, SQLModel
 
 

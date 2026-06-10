@@ -3,7 +3,6 @@
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
-from sqlmodel import Session
 
 from modules.trackers.model import Tracker
 

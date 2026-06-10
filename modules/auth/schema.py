@@ -8,7 +8,9 @@ class RegisterSchema(UserCreate):
     """User registration schema extending `UserCreate` with validation."""
 
     password: str = Field(
-        min_length=8, description="Password must be at least 8 characters"
+        min_length=8,
+        max_length=128,
+        description="Password must be 8-128 characters",
     )
 
 
