@@ -28,3 +28,13 @@ def revoke_refresh_token(session: Session, rt: RefreshToken) -> None:
     rt.revoked = True
     session.add(rt)
     session.commit()
+
+
+def mark_replaced(
+    session: Session, rt: RefreshToken, new_token_id: UUID
+) -> None:
+    """Revoke a token and record which token replaced it (rotation)."""
+    rt.revoked = True
+    rt.replaced_by_id = new_token_id
+    session.add(rt)
+    session.commit()

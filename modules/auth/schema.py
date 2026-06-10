@@ -25,3 +25,10 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token rotation request schema."""
+
+    refresh_token: str
+    model_config = {"extra": "forbid"}
