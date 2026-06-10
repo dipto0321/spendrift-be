@@ -105,7 +105,7 @@ def delete_budget(
     )
 
 
-def _month_bounds(month: str) -> tuple[date, date]:
+def month_bounds(month: str) -> tuple[date, date]:
     """First day of the month and first day of the next month."""
     year, mon = int(month[:4]), int(month[5:7])
     start = date(year, mon, 1)
@@ -141,7 +141,7 @@ def get_budget_status(
     """Compute spending status for a budget's month."""
     budget = get_budget_or_404(session, tracker_id, budget_id, user_id)
 
-    start, end = _month_bounds(budget.month)
+    start, end = month_bounds(budget.month)
     spent = expense_repo.sum_expenses_amount(session, tracker_id, start, end)
 
     remaining = budget.monthly_limit - spent

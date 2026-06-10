@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from modules.auth.router import router as auth_router
 from modules.budgets.router import router as budgets_router
 from modules.categories.router import router as categories_router
+from modules.dashboard.router import router as dashboard_router
 from modules.expenses.router import router as expenses_router
 from modules.trackers.router import router as trackers_router
 from modules.users.router import router as users_router
@@ -18,3 +19,4 @@ api_router.include_router(trackers_router, prefix="/trackers", tags=["trackers"]
 api_router.include_router(categories_router)
 api_router.include_router(expenses_router)
 api_router.include_router(budgets_router)
+api_router.include_router(dashboard_router)
