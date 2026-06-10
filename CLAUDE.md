@@ -24,7 +24,7 @@
 | Expenses   | ✅ Complete     |
 | Budgets    | ✅ Complete     |
 | Dashboard  | ✅ Complete     |
-| Reports    | ❌ Not started  |
+| Reports    | ✅ Complete     |
 
 ---
 
