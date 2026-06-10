@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Generator
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, create_engine
 
 from app.core.config import settings
 
@@ -24,8 +24,3 @@ def get_session() -> Generator[Session, None, None]:
     with Session(get_engine()) as session:
         yield session
 
-
-def create_db_tables(engine=None) -> None:
-    if engine is None:
-        engine = get_engine()
-    SQLModel.metadata.create_all(engine)
