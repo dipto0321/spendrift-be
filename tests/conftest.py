@@ -62,8 +62,12 @@ def client_fixture(engine: Engine) -> Generator[TestClient, None, None]:
             yield session
 
     app.dependency_overrides[get_session] = get_session_override
+    # Disable rate limiting in tests; limits are per-IP and every test
+    # request comes from the same client address.
+    app.state.limiter.enabled = False
     with TestClient(app) as client:
         yield client
+    app.state.limiter.enabled = True
     app.dependency_overrides.clear()
 
 

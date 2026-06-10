@@ -27,6 +27,7 @@ class Expense(SQLModel, table=True):
     type: str = Field(max_length=10)  # "need" | "want"
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
+        sa_column=Column(DateTime(timezone=True)),
     )
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),

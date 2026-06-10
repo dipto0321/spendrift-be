@@ -28,6 +28,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _mask_email(email: str) -> str:
+    """Mask an email for logging: 'dipto@x.com' -> 'd***@x.com'."""
+    local, _, domain = email.partition("@")
+    masked_local = (local[0] + "***") if local else "***"
+    return f"{masked_local}@{domain}"
+
+
 @router.post(
     "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
 )
@@ -38,12 +45,12 @@ async def register(
     session: Annotated[Session, Depends(get_session)],
 ):
     """Register a new user and return tokens."""
-    logger.info(f"Registration attempt for email: {signup_data.email}")
+    logger.info(f"Registration attempt for email: {_mask_email(signup_data.email)}")
 
     user = register_user(session, signup_data)
     tokens, _ = issue_token_pair(session, user)
 
-    logger.info(f"User registered successfully: {user.email}")
+    logger.info(f"User registered successfully: {user.id}")
     return tokens
 
 
@@ -55,20 +62,27 @@ async def login(
     session: Annotated[Session, Depends(get_session)],
 ):
     """Authenticate user and return tokens."""
-    logger.info(f"Login attempt for email: {login_data.email}")
+    logger.info(f"Login attempt for email: {_mask_email(login_data.email)}")
 
     user = authenticate_user(session, login_data.email, login_data.password)
     if not user:
-        logger.warning(f"Failed login attempt for email: {login_data.email}")
+        logger.warning(f"Failed login attempt for email: {_mask_email(login_data.email)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if not user.is_active:
+        logger.warning(f"Login attempt for inactive user: {user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
     tokens, _ = issue_token_pair(session, user)
 
-    logger.info(f"User logged in successfully: {user.email}")
+    logger.info(f"User logged in successfully: {user.id}")
     return tokens
 
 

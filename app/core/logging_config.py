@@ -53,4 +53,10 @@ def setup_logging():
     # Set FastAPI and SQLAlchemy loggers
     logging.getLogger("fastapi").setLevel(settings.log_level.upper())
     logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
-    logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+
+    # Route uvicorn through the root handlers so access/error logs share
+    # the same (JSON) formatter instead of uvicorn's own
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        uvicorn_logger = logging.getLogger(name)
+        uvicorn_logger.handlers = []
+        uvicorn_logger.propagate = True
