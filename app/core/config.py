@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     api_v1_str: str = Field(default="/api/v1", alias="API_V1_STR")
     debug: bool = Field(default=False, alias="DEBUG")
 
+    # CORS - comma-separated list of allowed origins (no wildcard:
+    # credentials are allowed, so origins must be explicit)
+    cors_origins: str = Field(
+        default="http://localhost:3000", alias="CORS_ORIGINS"
+    )
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")

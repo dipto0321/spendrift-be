@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.api import api_router as v1_router
+from app.core.config import settings
 from app.core.logging_config import setup_logging
 from app.middleware.rate_limit import limiter
 
@@ -16,6 +18,15 @@ app = FastAPI(
     title="Financial tracker API",
     description="An app which helps you to track your expenses and income, manage budgets, and gain insights into your financial habits.",
     version="1.0.0",
+)
+
+# CORS - explicit origin allowlist (required for the browser frontend)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Setup rate limiting
