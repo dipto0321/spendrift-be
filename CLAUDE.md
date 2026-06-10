@@ -22,7 +22,7 @@
 | Trackers   | ✅ Complete     |
 | Categories | ✅ Complete     |
 | Expenses   | ✅ Complete     |
-| Budgets    | ❌ Not started  |
+| Budgets    | ✅ Complete     |
 | Dashboard  | ❌ Not started  |
 | Reports    | ❌ Not started  |
 

@@ -1,6 +1,7 @@
 """Expense repository - data access."""
 
 from datetime import date as date_type
+from decimal import Decimal
 from uuid import UUID
 
 from sqlmodel import Session, func, select
@@ -83,6 +84,26 @@ def update_expense(
     session.commit()
     session.refresh(expense)
     return expense
+
+
+def sum_expenses_amount(
+    session: Session,
+    tracker_id: UUID,
+    start_date: date_type,
+    end_date: date_type,
+) -> Decimal:
+    """Sum expense amounts for a tracker in [start_date, end_date).
+
+    Simple single-value aggregate kept in the repo so services never
+    build SQL directly.
+    """
+    total = session.exec(
+        select(func.sum(Expense.amount))
+        .where(Expense.tracker_id == tracker_id)
+        .where(Expense.date >= start_date)
+        .where(Expense.date < end_date)
+    ).one()
+    return Decimal(total) if total is not None else Decimal("0")
 
 
 def count_expenses_by_category(session: Session, category_id: UUID) -> int:
