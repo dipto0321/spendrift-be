@@ -3,10 +3,13 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-fastapi}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      # No default: set POSTGRES_PASSWORD in .env or the environment.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-fastapi_db}
     ports:
-      - "5432:5432"
+      # Bound to loopback only; remove the 127.0.0.1 prefix if other hosts
+      # genuinely need direct database access.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -15,8 +18,11 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-fastapi_db}
-      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-in-production}
+      # psycopg2 driver - matches the psycopg2-binary dependency
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-fastapi}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-fastapi_db}
+      # No default: a baked-in fallback secret must never reach production.
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     depends_on:
       - postgres
     volumes:

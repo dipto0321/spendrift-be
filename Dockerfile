@@ -11,10 +11,15 @@ RUN apt-get update && apt-get install -y \
 
 # Copy and install dependencies
 COPY pyproject.toml .
-RUN pip install --no-cache-dir -e ".[postgres]"
+RUN pip install --no-cache-dir -e .
 
 # Copy application
 COPY . .
+
+# Run as a non-root user
+RUN useradd --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 
 # Run migrations and start server
 CMD ["sh", "-c", "alembic upgrade head && fastapi run app/main.py --host 0.0.0.0 --port 8000"]

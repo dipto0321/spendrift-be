@@ -25,10 +25,10 @@ help:
 	@echo "  make clean        Remove pycache and build files"
 
 install:
-	$(PYTHON) -m pip install -e ".[postgres]"
+	uv sync --no-dev
 
 dev:
-	$(PYTHON) -m pip install -e ".[dev,postgres]"
+	uv sync
 
 migrations:
 	@read -p "Enter migration message: " msg; \
