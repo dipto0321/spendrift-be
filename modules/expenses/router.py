@@ -17,7 +17,7 @@ from modules.expenses.schema import (
     ExpenseUpdate,
 )
 from modules.users.model import User
-from modules.users.router import get_current_user
+from app.core.security import get_current_user
 
 router = APIRouter(prefix="/trackers/{tracker_id}/expenses", tags=["Expenses"])
 

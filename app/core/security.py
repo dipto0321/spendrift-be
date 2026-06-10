@@ -1,12 +1,17 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Annotated, Optional
 
 import jwt
-from app.core.config import settings
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pydantic import BaseModel
+from sqlmodel import Session
+
+from app.core.config import settings
+from app.core.database import get_session
 
 # Password hashing with Argon2
 pwd_hash = PasswordHash((
@@ -70,3 +75,48 @@ def hash_token(token: str) -> str:
     """Hash a token for storage (for refresh token rotation)."""
     import hashlib
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+async def get_current_user(
+    credentials: Annotated[
+        HTTPAuthorizationCredentials | None, Depends(bearer_scheme)
+    ] = None,
+    session: Session = Depends(get_session),
+):
+    """Get current user from JWT bearer token."""
+    # Imported here to keep module import order simple (core -> modules only
+    # inside the dependency, not at import time).
+    from modules.users.repo import get_user_by_email
+
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token_data = decode_token(credentials.credentials)
+    if token_data is None or token_data.email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = get_user_by_email(session, token_data.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
+
+    return user
