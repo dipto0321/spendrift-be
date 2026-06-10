@@ -1,7 +1,6 @@
 from functools import lru_cache
 from typing import Generator
 
-from sqlalchemy import event
 from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
@@ -11,30 +10,14 @@ from app.core.config import settings
 def get_engine():
     """Create the engine once and reuse it (and its connection pool).
 
-    Creating an engine per request would create a new connection pool per
-    request, exhausting database connections under load.
+    PostgreSQL only: the test suite builds its own in-memory SQLite
+    engine in tests/conftest.py and overrides get_session.
     """
-    engine = create_engine(
+    return create_engine(
         settings.database_url,
-        connect_args=(
-            {"check_same_thread": False}
-            if settings.database_url.startswith("sqlite")
-            else {}
-        ),
         echo=settings.debug,
-        pool_pre_ping=not settings.database_url.startswith("sqlite"),
+        pool_pre_ping=True,
     )
-
-    if settings.database_url.startswith("sqlite"):
-        # SQLite ships with foreign key enforcement OFF; without this,
-        # ondelete="CASCADE"/"RESTRICT" on our models is silently ignored.
-        @event.listens_for(engine, "connect")
-        def _enable_sqlite_fks(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-
-    return engine
 
 
 def get_session() -> Generator[Session, None, None]:

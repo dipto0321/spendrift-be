@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     )
     refresh_token_expire_days: int = Field(default=7, alias="REFRESH_TOKEN_EXPIRE_DAYS")
 
-    # Database
-    database_url: str = Field(default="sqlite:///./app.db", alias="DATABASE_URL")
+    # Database (PostgreSQL; SQLite is used only by the test suite)
+    database_url: str = Field(alias="DATABASE_URL")
 
     # API
     api_v1_str: str = Field(default="/api/v1", alias="API_V1_STR")

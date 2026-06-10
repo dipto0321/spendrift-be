@@ -167,6 +167,7 @@ Never return data for a `tracker_id` without checking `tracker.user_id == curren
 
 ## Database Rules
 
+- PostgreSQL is the only runtime database. SQLite is used exclusively by the test suite (in-memory engine in `tests/conftest.py`) — never as an app fallback. `DATABASE_URL` has no default and must be set
 - `tracker_id` is the workspace scope for all data tables
 - When you add, remove, or rename a model field, update the matching schema/service/repo code and create a new Alembic migration with `make migrations`
 - Indexes are defined in Alembic migrations, not in models
