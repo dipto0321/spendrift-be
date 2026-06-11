@@ -46,6 +46,18 @@ def test_register_duplicate_email(client: TestClient):
     assert response.status_code == 400
 
 
+def test_register_disabled(client: TestClient, monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "allow_registration", False)
+    response = client.post(
+        REGISTER_URL,
+        json={"name": "Carol", "email": "carol@example.com", "password": "password123"},
+    )
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Registration is disabled"
+
+
 def test_register_validation(client: TestClient):
     cases = [
         {"name": "C", "email": "carol@example.com", "password": "short"},  # < 8

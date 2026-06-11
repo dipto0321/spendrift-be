@@ -23,6 +23,11 @@ services:
       # The Dockerfile CMD binds 8000; tell Render's router to use it.
       - key: PORT
         value: "8000"
+      # Trust X-Forwarded-For from Render's proxy so SlowAPI rate limits
+      # key on the real client IP, not the proxy's. Safe here: only the
+      # proxy can reach the container.
+      - key: FORWARDED_ALLOW_IPS
+        value: "*"
 
 databases:
   - name: spendrift-db-staging

@@ -1,6 +1,7 @@
 """Auth service - business logic."""
 import logging
 
+from app.core.config import settings
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -22,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 def register_user(session: Session, user_create: RegisterSchema) -> User:
     """Register a new user."""
+    if not settings.allow_registration:
+        raise HTTPException(status_code=403, detail="Registration is disabled")
+
     try:
         existing_user = get_user_by_email(session, user_create.email)
         if existing_user:

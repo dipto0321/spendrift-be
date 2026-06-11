@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     api_v1_str: str = Field(default="/api/v1", alias="API_V1_STR")
     debug: bool = Field(default=False, alias="DEBUG")
 
+    # Public sign-up kill switch: set false in deployments where new
+    # accounts should not be created by anyone who finds the API.
+    allow_registration: bool = Field(default=True, alias="ALLOW_REGISTRATION")
+
     # CORS - comma-separated list of allowed origins (no wildcard:
     # credentials are allowed, so origins must be explicit)
     cors_origins: str = Field(
