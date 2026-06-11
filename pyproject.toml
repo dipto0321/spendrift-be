@@ -1,7 +1,7 @@
 [project]
-name = "Fintrack"
+name = "Spendrift"
 version = "0.1.0"
-description = "Example project using fastapi-scaffold-with-auth"
+description = "Spendrift - personal finance tracker API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

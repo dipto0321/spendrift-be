@@ -1,10 +1,10 @@
-# FinTracker Backend — Architecture Documentation
+# Spendrift Backend — Architecture Documentation
 
 ---
 
 ## 1. Overview
 
-FinTracker is a personal finance tracking application with a tracker-based architecture. Each tracker is an independent financial workspace (e.g., Bangladesh Tracker in BDT, Europe Tracker in EUR) containing its own expenses, categories, budgets, and reports.
+Spendrift is a personal finance tracking application with a tracker-based architecture. Each tracker is an independent financial workspace (e.g., Bangladesh Tracker in BDT, Europe Tracker in EUR) containing its own expenses, categories, budgets, and reports.
 
 ### Tech Stack
 

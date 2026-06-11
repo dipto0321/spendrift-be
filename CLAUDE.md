@@ -1,4 +1,4 @@
-# FinTracker Backend — Agent Instructions
+# Spendrift Backend — Agent Instructions
 
 > This file tells Claude Code / OpenCode / any AI agent exactly how this codebase works.
 > Read this before writing any code.
@@ -7,7 +7,7 @@
 
 ## Project at a Glance
 
-**FinTracker** is a personal finance backend. Each user can have multiple **Trackers** (e.g. "Bangladesh Tracker" in BDT, "Europe Tracker" in EUR). Every tracker is an independent workspace with its own expenses, categories, and budgets.
+**Spendrift** is a personal finance backend. Each user can have multiple **Trackers** (e.g. "Bangladesh Tracker" in BDT, "Europe Tracker" in EUR). Every tracker is an independent workspace with its own expenses, categories, and budgets.
 
 **Stack**: FastAPI · SQLModel · Alembic · PostgreSQL 16 · Pydantic v2 · JWT (Argon2) · SlowAPI · Docker
 

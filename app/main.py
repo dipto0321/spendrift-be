@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Create FastAPI app
 app = FastAPI(
-    title="Financial tracker API",
+    title="Spendrift API",
     description="An app which helps you to track your expenses and income, manage budgets, and gain insights into your financial habits.",
     version="1.0.0",
 )
