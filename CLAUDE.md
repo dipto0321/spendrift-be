@@ -9,7 +9,7 @@
 
 **Spendrift** is a personal finance backend. Each user can have multiple **Trackers** (e.g. "Bangladesh Tracker" in BDT, "Europe Tracker" in EUR). Every tracker is an independent workspace with its own expenses, categories, and budgets.
 
-**Stack**: FastAPI · SQLModel · Alembic · PostgreSQL 16 · Pydantic v2 · JWT (Argon2) · SlowAPI · Docker
+**Stack**: FastAPI · SQLModel · Alembic · PostgreSQL 18 · Pydantic v2 · JWT (Argon2) · SlowAPI · Docker
 
 ---
 

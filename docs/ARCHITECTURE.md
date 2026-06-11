@@ -13,7 +13,7 @@ Spendrift is a personal finance tracking application with a tracker-based archit
 | Framework | FastAPI (Python >=3.11) |
 | ORM | SQLModel (SQLAlchemy 2.0 under the hood) |
 | Migrations | Alembic |
-| Database | PostgreSQL 16 (Neon in production, Docker locally) |
+| Database | PostgreSQL 18 |
 | Auth | JWT (access + refresh tokens) + Argon2 password hashing |
 | Validation | Pydantic v2 |
 | Rate Limiting | SlowAPI (IP-based) |
@@ -25,12 +25,12 @@ Spendrift is a personal finance tracking application with a tracker-based archit
 |---|---|
 | Auth (register, login, refresh) | ✅ Complete |
 | Users (profile) | ✅ Complete |
-| Trackers | ❌ Not started |
-| Categories | ❌ Not started |
-| Expenses | ❌ Not started |
-| Budgets | ❌ Not started |
-| Dashboard | ❌ Not started |
-| Reports | ❌ Not started |
+| Trackers | ✅ Complete |
+| Categories | ✅ Complete |
+| Expenses | ✅ Complete |
+| Budgets | ✅ Complete |
+| Dashboard | ✅ Complete |
+| Reports | ✅ Complete |
 
 ---
 
@@ -80,8 +80,8 @@ backend/
 ├── docs/                             # Architecture documentation
 │   └── ARCHITECTURE.md
 │
-├── docker-compose.yml                # PostgreSQL 16 + API service
-├── Dockerfile                        # Python 3.11-slim
+├── docker-compose.yml                # PostgreSQL 18 + API service
+├── Dockerfile                        # Python 3.14-slim
 ├── Makefile                          # Dev commands
 ├── pyproject.toml                    # Dependencies
 ├── .env                              # Environment variables
