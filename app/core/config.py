@@ -39,7 +39,11 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json", alias="LOG_FORMAT")
 
     model_config = SettingsConfigDict(
-        env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        # .env also holds compose-only variables (POSTGRES_*); ignore
+        # keys that aren't part of these settings instead of crashing.
+        extra="ignore",
     )
 
 
