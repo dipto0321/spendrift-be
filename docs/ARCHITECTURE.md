@@ -483,27 +483,27 @@ Seeded automatically when a new tracker is created:
 
 ### Phase 3 — Budgets
 
-- [ ] Budget model (`modules/budgets/model.py`)
-- [ ] Budget schemas (including BudgetStatus response)
-- [ ] Budget repository
-- [ ] Budget service (status computation, savings health)
-- [ ] Budget router (CRUD + `/current` endpoint)
-- [ ] Alembic migration for budgets table
+- [x] Budget model (`modules/budgets/model.py`)
+- [x] Budget schemas (including BudgetStatus response)
+- [x] Budget repository
+- [x] Budget service (status computation, savings health)
+- [x] Budget router (CRUD + `/current` endpoint)
+- [x] Alembic migration for budgets table
 
 ### Phase 4 — Dashboard & Reports
 
-- [ ] Dashboard service (aggregation queries)
-- [ ] Dashboard router (`GET /dashboard`)
-- [ ] Reports service (analytics, breakdown, spending groups, year comparison)
-- [ ] Reports router (4 endpoints)
+- [x] Dashboard service (aggregation queries)
+- [x] Dashboard router (`GET /dashboard`)
+- [x] Reports service (analytics, breakdown, spending groups, year comparison)
+- [x] Reports router (4 endpoints)
 
 ### Phase 5 — Polish
 
-- [ ] Input validation (Pydantic models for all endpoints)
-- [ ] Error handling (consistent error response format)
-- [ ] CORS configuration for frontend origin
-- [ ] Database seeding script
-- [ ] Integration tests (pytest + httpx)
+- [x] Input validation (Pydantic models for all endpoints)
+- [x] Error handling (consistent error response format)
+- [x] CORS configuration for frontend origin
+- [x] Database seeding script
+- [x] Integration tests (pytest + httpx)
 
 ---
 
