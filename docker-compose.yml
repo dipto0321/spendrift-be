@@ -12,6 +12,11 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fastapi} -d ${POSTGRES_DB:-fastapi_db}"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   api:
     build: .
@@ -24,7 +29,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - .:/app
 
