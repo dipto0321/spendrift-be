@@ -1,10 +1,10 @@
 """User model."""
 
 from datetime import datetime, timezone
-from typing import ClassVar
+from typing import ClassVar, Optional
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Text
 from sqlmodel import Column, Field, SQLModel
 
 
@@ -18,6 +18,9 @@ class User(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     hashed_password: str
     is_active: bool = Field(default=True)
+    avatar_url: Optional[str] = Field(
+        default=None, sa_column=Column(Text, nullable=True)
+    )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         sa_column=Column(DateTime(timezone=True), index=True),
