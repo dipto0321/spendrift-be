@@ -85,7 +85,7 @@ async def upload_avatar(
         ext = ".jpg"  # mimetypes returns .jpe for image/jpeg
 
     old_file_key = user.avatar_file_key
-    file_key = f"{settings.storage_env}/avatars/{user.id}/{uuid.uuid4()}{ext}"
+    file_key = f"{settings.storage_env}/avatars/{uuid.uuid4()}{ext}"
 
     storage.upload(file_key, data, content_type)
 
