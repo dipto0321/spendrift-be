@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    # Storage (S3-compatible: Cloudflare R2, MinIO, Floci, etc.)
+    storage_endpoint_url: str = Field(alias="STORAGE_ENDPOINT_URL")
+    storage_access_key_id: str = Field(alias="STORAGE_ACCESS_KEY_ID")
+    storage_secret_access_key: str = Field(alias="STORAGE_SECRET_ACCESS_KEY")
+    storage_bucket_name: str = Field(alias="STORAGE_BUCKET_NAME")
+    storage_presign_expiry: int = Field(default=86400, alias="STORAGE_PRESIGN_EXPIRY")
+    storage_env: str = Field(default="dev", alias="STORAGE_ENV")
+
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_format: str = Field(default="json", alias="LOG_FORMAT")

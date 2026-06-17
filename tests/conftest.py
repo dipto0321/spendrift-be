@@ -22,11 +22,31 @@ from modules.refresh_tokens.model import RefreshToken  # noqa: F401
 from modules.trackers.model import Tracker
 from modules.trackers.schema import TrackerCreate
 from modules.trackers import service as tracker_service
-from modules.users.model import User
+from modules.users.model import User, UserAvatar  # noqa: F401
 
 from app.core.database import get_session
 from app.core.security import create_access_token, get_password_hash
+from app.core.storage import get_storage
+from app.core.storage.base import StorageBackend
 from app.main import app
+
+
+class _StubStorage:
+    """In-memory storage backend — no real S3 calls during tests."""
+
+    def upload(self, file_key: str, data: bytes, content_type: str) -> None:
+        # no-op: tests don't need real object storage
+        ...
+
+    def delete(self, file_key: str) -> None:
+        # no-op: nothing to clean up in tests
+        ...
+
+    def generate_presigned_url(self, file_key: str, expires_in: int) -> str:
+        return f"https://test-storage/{file_key}"
+
+
+_stub_storage: StorageBackend = _StubStorage()
 
 
 @event.listens_for(Engine, "connect")
@@ -62,6 +82,7 @@ def client_fixture(engine: Engine) -> Generator[TestClient, None, None]:
             yield session
 
     app.dependency_overrides[get_session] = get_session_override
+    app.dependency_overrides[get_storage] = lambda: _stub_storage
     # Disable rate limiting in tests; limits are per-IP and every test
     # request comes from the same client address.
     app.state.limiter.enabled = False
