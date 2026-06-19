@@ -222,3 +222,4 @@ app.db
 .idea
 .DS_Store
 seed/*
+local_dump.sql
