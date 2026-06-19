@@ -1,118 +1,131 @@
-# Example Project README
+# Spendrift — Personal Finance Backend
 
-This is a complete, working example of a FastAPI application using the `fastapi-scaffold-with-auth` template.
+> A multi-tracker personal finance API built with FastAPI, SQLModel, and PostgreSQL.
 
-## Quick Start
+**Author**: Dipto Karmakar  
+**License**: [AGPL-3.0](LICENSE) — free to study, not free to commercialize
 
-### 1. Install Dependencies
+---
+
+## What is Spendrift?
+
+Spendrift is a personal finance backend where each user can manage multiple **Trackers** (e.g. a "Bangladesh Tracker" in BDT, a "Europe Tracker" in EUR). Every tracker is an independent workspace with its own expenses, categories, and budgets.
+
+## Stack
+
+- **FastAPI** — async REST API
+- **SQLModel + Alembic** — ORM and migrations
+- **PostgreSQL 18** — primary database
+- **Pydantic v2** — request/response validation
+- **Argon2 + JWT** — authentication
+- **SlowAPI** — rate limiting
+- **Docker** — local development
+
+## Features
+
+| Module     | Status      |
+|------------|-------------|
+| Auth       | Complete    |
+| Users      | Complete    |
+| Trackers   | Complete    |
+| Categories | Complete    |
+| Expenses   | Complete    |
+| Budgets    | Complete    |
+| Dashboard  | Complete    |
+| Reports    | Complete    |
+
+## Getting Started
+
+### Prerequisites
+
+- Docker (for PostgreSQL)
+- Python 3.12+
+- `uv` package manager
+
+### Setup
 
 ```bash
+# 1. Start PostgreSQL
+docker-compose up -d
+
+# 2. Install dependencies
 pip install -e ".[postgres]"
+
+# 3. Copy and configure environment
+cp .env.example .env
+# Edit .env with your DATABASE_URL and SECRET_KEY
+
+# 4. Apply migrations
+make upgrade
+
+# 5. Start the API
+make run
 ```
 
-### 2. Setup Environment
+API runs at `http://localhost:8000`  
+Interactive docs at `http://localhost:8000/docs`
 
-Copy `.env.example` to `.env`:
+## Key Commands
 
 ```bash
-cp ../.env.example .env
+make run          # Start API with hot reload (port 8000)
+make migrations   # Generate Alembic migration
+make upgrade      # Apply pending migrations
+make test         # Run test suite
+make lint         # ruff + mypy
 ```
 
-Edit `.env` with your settings:
+## API Overview
 
-```env
-SECRET_KEY=your-secret-key-here-must-be-32-chars-minimum
-DATABASE_URL=sqlite:///./app.db
-DEBUG=False
-```
+Base path: `/api/v1`
 
-### 3. Initialize Database
-
-```bash
-alembic upgrade head
-```
-
-### 4. Run the Application
-
-```bash
-fastapi dev app/main.py
-```
-
-Server will start at `http://localhost:8000`
-
-## API Endpoints
-
-Visit `http://localhost:8000/docs` for interactive API documentation.
-
-### Authentication
-
-```bash
-# Register
-curl -X POST "http://localhost:8000/api/v1/auth/register" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"securepass123"}'
-
-# Login
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"securepass123"}'
-```
-
-### Get Current User
-
-```bash
-curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  "http://localhost:8000/api/v1/users/me"
-```
-
-## Development
-
-```bash
-# Run tests
-pytest
-
-# Format code
-make format
-
-# Check types
-mypy app modules
-
-# Create migration
-alembic revision --autogenerate -m "Your migration message"
-```
+| Group      | Endpoints                                      |
+|------------|------------------------------------------------|
+| Auth       | `POST /auth/register`, `POST /auth/login`      |
+| Users      | `GET /users/me`, `PATCH /users/me`             |
+| Trackers   | `CRUD /trackers`                               |
+| Categories | `CRUD /trackers/{id}/categories`               |
+| Expenses   | `CRUD /trackers/{id}/expenses`                 |
+| Budgets    | `CRUD /trackers/{id}/budgets`                  |
+| Dashboard  | `GET /trackers/{id}/dashboard`                 |
+| Reports    | `GET /trackers/{id}/reports`                   |
 
 ## Project Structure
 
-```
-example_project/
+```text
+backend/
 ├── app/
-│   ├── main.py           # FastAPI app instance
-│   ├── api/
-│   │   └── v1/          # API routes
-│   └── core/            # Config, DB, security
+│   ├── main.py           # FastAPI app entry point
+│   ├── api/v1/           # Router registration
+│   └── core/             # Config, DB session, security
 ├── modules/
-│   ├── auth/            # Authentication
-│   └── users/           # User management
-├── alembic/             # Database migrations
-├── pyproject.toml
-└── Makefile
+│   ├── auth/             # JWT auth
+│   ├── users/            # User profile
+│   ├── trackers/         # Tracker workspaces
+│   ├── categories/       # Expense categories
+│   ├── expenses/         # Expense records
+│   ├── budgets/          # Budget limits
+│   ├── dashboard/        # Summary aggregations
+│   └── reports/          # Detailed reports
+├── alembic/              # Database migrations
+├── tests/                # Pytest suite
+├── docker-compose.yml
+├── Makefile
+└── pyproject.toml
 ```
 
-## Logs
+## License
 
-The application logs in JSON format to stdout by default. To change:
+Copyright (c) 2026 Dipto Karmakar
 
-```env
-LOG_FORMAT=text  # Switch to plain text
-LOG_LEVEL=DEBUG  # Set log level
-```
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.  
+See the [LICENSE](LICENSE) file for full terms.
 
-## Next Steps
+**In plain English:**
 
-1. **Add new endpoints** in `modules/*/router.py`
-2. **Add models** in `modules/*/model.py`
-3. **Create migrations** with `alembic revision --autogenerate`
-4. **Write tests** in `../tests/`
-5. **Deploy** to your cloud platform
+- You may study and use this code for personal/educational purposes
+- If you modify and distribute it, you must open-source your version under AGPL-3.0
+- You may **not** use this in a commercial product or SaaS without written permission from the author
+- You **must** credit the original author (Dipto Karmakar) in any derivative work
 
-See [CONTRIBUTING](../CONTRIBUTING.md) for more info.
+For commercial licensing inquiries: [diptokmk47@gmail.com](mailto:diptokmk47@gmail.com)
