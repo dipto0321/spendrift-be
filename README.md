@@ -75,6 +75,83 @@ make test         # Run test suite
 make lint         # ruff + mypy
 ```
 
+## Screenshots
+
+### API Documentation (Swagger UI)
+
+![Swagger UI Overview](docs/screenshots/swagger-overview.png)
+
+### Auth Endpoints
+
+![Auth Endpoints](docs/screenshots/swagger-auth.png)
+
+### Tracker Endpoints
+
+![Tracker Endpoints](docs/screenshots/swagger-trackers.png)
+
+### Expense Endpoints
+
+![Expense Endpoints](docs/screenshots/swagger-expenses.png)
+
+## Sample API Responses
+
+### Register / Login
+
+```json
+POST /api/v1/auth/register → 200
+{
+  "access_token": "<jwt>",
+  "refresh_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+### Get current user
+
+```json
+GET /api/v1/users/me → 200
+{
+  "id": "203a029c-f5a5-4c70-8115-219b807f7951",
+  "name": "Demo User",
+  "email": "demo@example.com",
+  "is_active": true,
+  "avatar_url": null,
+  "created_at": "2026-06-19T16:13:20.626774Z",
+  "updated_at": "2026-06-19T16:13:20.626785Z"
+}
+```
+
+### Create a tracker (auto-seeds 10 categories)
+
+```json
+POST /api/v1/trackers → 201
+{
+  "id": "2d35de32-f10d-4aec-833e-0e94d5e9bdd6",
+  "name": "My Finances",
+  "currency": "USD",
+  "created_at": "2026-06-19T16:13:28.359432Z",
+  "updated_at": "2026-06-19T16:13:28.359438Z"
+}
+```
+
+### Auto-seeded categories
+
+```json
+GET /api/v1/trackers/{id}/categories → 200
+[
+  { "name": "Groceries",     "color": "#22C55E" },
+  { "name": "Transport",     "color": "#3B82F6" },
+  { "name": "Dining",        "color": "#F97316" },
+  { "name": "Subscriptions", "color": "#8B5CF6" },
+  { "name": "Entertainment", "color": "#EC4899" },
+  { "name": "Health",        "color": "#14B8A6" },
+  { "name": "Shopping",      "color": "#EAB308" },
+  { "name": "Utilities",     "color": "#06B6D4" },
+  { "name": "Coffee",        "color": "#A855F7" },
+  { "name": "Uncategorized", "color": "#78716C" }
+]
+```
+
 ## API Overview
 
 Base path: `/api/v1`
