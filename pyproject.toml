@@ -1,7 +1,7 @@
 [project]
-name = "Fintrack"
+name = "Spendrift"
 version = "0.1.0"
-description = "Example project using fastapi-scaffold-with-auth"
+description = "Spendrift - personal finance tracker API"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,16 +14,12 @@ dependencies = [
     "slowapi>=0.1.9",
     "python-multipart>=0.0.6",
     "email-validator>=2.0.0",
+    "psycopg2-binary>=2.9.12",
+    "boto3>=1.35.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.0",
-    "httpx>=0.24.0",
-]
 
-postgres = ["psycopg2>=2.9.12"]
+
 
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
@@ -32,3 +28,18 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*", "modules*", "alembic*"]
+
+[dependency-groups]
+dev = [
+    "pytest-cov>=7.1.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
+    "ruff>=0.15.16",
+    "mypy>=2.1.0",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov=app --cov=modules --cov-report=html --cov-report=term-missing"
+testpaths = ["tests"]
+asyncio_mode = "auto"

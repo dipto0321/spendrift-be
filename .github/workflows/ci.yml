@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+env:
+  # Test-only values; the suite runs against an in-memory SQLite engine
+  # and never reads DATABASE_URL at runtime.
+  SECRET_KEY: ci-only-secret-key-min-32-characters-long
+  DATABASE_URL: "sqlite://"
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint (ruff)
+        run: uv run ruff check app modules tests
+
+      - name: Type check (mypy)
+        # TODO: make blocking once the existing findings are cleaned up
+        continue-on-error: true
+        run: uv run mypy app modules
+
+      - name: Tests
+        run: uv run pytest -q

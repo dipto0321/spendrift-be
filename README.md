@@ -1,118 +1,208 @@
-# Example Project README
+# Spendrift — Personal Finance Backend
 
-This is a complete, working example of a FastAPI application using the `fastapi-scaffold-with-auth` template.
+> A multi-tracker personal finance API built with FastAPI, SQLModel, and PostgreSQL.
 
-## Quick Start
+**Author**: Dipto Karmakar  
+**License**: [AGPL-3.0](LICENSE) — free to study, not free to commercialize
 
-### 1. Install Dependencies
+---
+
+## What is Spendrift?
+
+Spendrift is a personal finance backend where each user can manage multiple **Trackers** (e.g. a "Bangladesh Tracker" in BDT, a "Europe Tracker" in EUR). Every tracker is an independent workspace with its own expenses, categories, and budgets.
+
+## Stack
+
+- **FastAPI** — async REST API
+- **SQLModel + Alembic** — ORM and migrations
+- **PostgreSQL 18** — primary database
+- **Pydantic v2** — request/response validation
+- **Argon2 + JWT** — authentication
+- **SlowAPI** — rate limiting
+- **Docker** — local development
+
+## Features
+
+| Module     | Status      |
+|------------|-------------|
+| Auth       | Complete    |
+| Users      | Complete    |
+| Trackers   | Complete    |
+| Categories | Complete    |
+| Expenses   | Complete    |
+| Budgets    | Complete    |
+| Dashboard  | Complete    |
+| Reports    | Complete    |
+
+## Getting Started
+
+### Prerequisites
+
+- Docker (for PostgreSQL)
+- Python 3.12+
+- `uv` package manager
+
+### Setup
 
 ```bash
+# 1. Start PostgreSQL
+docker-compose up -d
+
+# 2. Install dependencies
 pip install -e ".[postgres]"
+
+# 3. Copy and configure environment
+cp .env.example .env
+# Edit .env with your DATABASE_URL and SECRET_KEY
+
+# 4. Apply migrations
+make upgrade
+
+# 5. Start the API
+make run
 ```
 
-### 2. Setup Environment
+API runs at `http://localhost:8000`  
+Interactive docs at `http://localhost:8000/docs`
 
-Copy `.env.example` to `.env`:
+## Key Commands
 
 ```bash
-cp ../.env.example .env
+make run          # Start API with hot reload (port 8000)
+make migrations   # Generate Alembic migration
+make upgrade      # Apply pending migrations
+make test         # Run test suite
+make lint         # ruff + mypy
 ```
 
-Edit `.env` with your settings:
+## Screenshots
 
-```env
-SECRET_KEY=your-secret-key-here-must-be-32-chars-minimum
-DATABASE_URL=sqlite:///./app.db
-DEBUG=False
+### API Documentation (Swagger UI)
+
+![Swagger UI Overview](docs/screenshots/swagger-overview.png)
+
+### Auth Endpoints
+
+![Auth Endpoints](docs/screenshots/swagger-auth.png)
+
+### Tracker Endpoints
+
+![Tracker Endpoints](docs/screenshots/swagger-trackers.png)
+
+### Expense Endpoints
+
+![Expense Endpoints](docs/screenshots/swagger-expenses.png)
+
+## Sample API Responses
+
+### Register / Login
+
+```json
+POST /api/v1/auth/register → 200
+{
+  "access_token": "<jwt>",
+  "refresh_token": "<jwt>",
+  "token_type": "bearer"
+}
 ```
 
-### 3. Initialize Database
+### Get current user
 
-```bash
-alembic upgrade head
+```json
+GET /api/v1/users/me → 200
+{
+  "id": "203a029c-f5a5-4c70-8115-219b807f7951",
+  "name": "Demo User",
+  "email": "demo@example.com",
+  "is_active": true,
+  "avatar_url": null,
+  "created_at": "2026-06-19T16:13:20.626774Z",
+  "updated_at": "2026-06-19T16:13:20.626785Z"
+}
 ```
 
-### 4. Run the Application
+### Create a tracker (auto-seeds 10 categories)
 
-```bash
-fastapi dev app/main.py
+```json
+POST /api/v1/trackers → 201
+{
+  "id": "2d35de32-f10d-4aec-833e-0e94d5e9bdd6",
+  "name": "My Finances",
+  "currency": "USD",
+  "created_at": "2026-06-19T16:13:28.359432Z",
+  "updated_at": "2026-06-19T16:13:28.359438Z"
+}
 ```
 
-Server will start at `http://localhost:8000`
+### Auto-seeded categories
 
-## API Endpoints
-
-Visit `http://localhost:8000/docs` for interactive API documentation.
-
-### Authentication
-
-```bash
-# Register
-curl -X POST "http://localhost:8000/api/v1/auth/register" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"securepass123"}'
-
-# Login
-curl -X POST "http://localhost:8000/api/v1/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"securepass123"}'
+```json
+GET /api/v1/trackers/{id}/categories → 200
+[
+  { "name": "Groceries",     "color": "#22C55E" },
+  { "name": "Transport",     "color": "#3B82F6" },
+  { "name": "Dining",        "color": "#F97316" },
+  { "name": "Subscriptions", "color": "#8B5CF6" },
+  { "name": "Entertainment", "color": "#EC4899" },
+  { "name": "Health",        "color": "#14B8A6" },
+  { "name": "Shopping",      "color": "#EAB308" },
+  { "name": "Utilities",     "color": "#06B6D4" },
+  { "name": "Coffee",        "color": "#A855F7" },
+  { "name": "Uncategorized", "color": "#78716C" }
+]
 ```
 
-### Get Current User
+## API Overview
 
-```bash
-curl -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  "http://localhost:8000/api/v1/users/me"
-```
+Base path: `/api/v1`
 
-## Development
-
-```bash
-# Run tests
-pytest
-
-# Format code
-make format
-
-# Check types
-mypy app modules
-
-# Create migration
-alembic revision --autogenerate -m "Your migration message"
-```
+| Group      | Endpoints                                      |
+|------------|------------------------------------------------|
+| Auth       | `POST /auth/register`, `POST /auth/login`      |
+| Users      | `GET /users/me`, `PATCH /users/me`             |
+| Trackers   | `CRUD /trackers`                               |
+| Categories | `CRUD /trackers/{id}/categories`               |
+| Expenses   | `CRUD /trackers/{id}/expenses`                 |
+| Budgets    | `CRUD /trackers/{id}/budgets`                  |
+| Dashboard  | `GET /trackers/{id}/dashboard`                 |
+| Reports    | `GET /trackers/{id}/reports`                   |
 
 ## Project Structure
 
-```
-example_project/
+```text
+backend/
 ├── app/
-│   ├── main.py           # FastAPI app instance
-│   ├── api/
-│   │   └── v1/          # API routes
-│   └── core/            # Config, DB, security
+│   ├── main.py           # FastAPI app entry point
+│   ├── api/v1/           # Router registration
+│   └── core/             # Config, DB session, security
 ├── modules/
-│   ├── auth/            # Authentication
-│   └── users/           # User management
-├── alembic/             # Database migrations
-├── pyproject.toml
-└── Makefile
+│   ├── auth/             # JWT auth
+│   ├── users/            # User profile
+│   ├── trackers/         # Tracker workspaces
+│   ├── categories/       # Expense categories
+│   ├── expenses/         # Expense records
+│   ├── budgets/          # Budget limits
+│   ├── dashboard/        # Summary aggregations
+│   └── reports/          # Detailed reports
+├── alembic/              # Database migrations
+├── tests/                # Pytest suite
+├── docker-compose.yml
+├── Makefile
+└── pyproject.toml
 ```
 
-## Logs
+## License
 
-The application logs in JSON format to stdout by default. To change:
+Copyright (c) 2026 Dipto Karmakar
 
-```env
-LOG_FORMAT=text  # Switch to plain text
-LOG_LEVEL=DEBUG  # Set log level
-```
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.  
+See the [LICENSE](LICENSE) file for full terms.
 
-## Next Steps
+**In plain English:**
 
-1. **Add new endpoints** in `modules/*/router.py`
-2. **Add models** in `modules/*/model.py`
-3. **Create migrations** with `alembic revision --autogenerate`
-4. **Write tests** in `../tests/`
-5. **Deploy** to your cloud platform
+- You may study and use this code for personal/educational purposes
+- If you modify and distribute it, you must open-source your version under AGPL-3.0
+- You may **not** use this in a commercial product or SaaS without written permission from the author
+- You **must** credit the original author (Dipto Karmakar) in any derivative work
 
-See [CONTRIBUTING](../CONTRIBUTING.md) for more info.
+For commercial licensing inquiries: [diptokmk47@gmail.com](mailto:diptokmk47@gmail.com)

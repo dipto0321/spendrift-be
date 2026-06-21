@@ -8,7 +8,9 @@ class RegisterSchema(UserCreate):
     """User registration schema extending `UserCreate` with validation."""
 
     password: str = Field(
-        min_length=8, description="Password must be at least 8 characters"
+        min_length=8,
+        max_length=128,
+        description="Password must be 8-128 characters",
     )
 
 
@@ -25,3 +27,10 @@ class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class RefreshTokenRequest(BaseModel):
+    """Refresh token rotation request schema."""
+
+    refresh_token: str
+    model_config = {"extra": "forbid"}

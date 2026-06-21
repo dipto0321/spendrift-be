@@ -1,29 +1,26 @@
+from functools import lru_cache
 from typing import Generator
 
+from sqlmodel import Session, create_engine
+
 from app.core.config import settings
-from sqlmodel import Session, SQLModel, create_engine
 
 
+@lru_cache(maxsize=1)
 def get_engine():
+    """Create the engine once and reuse it (and its connection pool).
+
+    PostgreSQL only: the test suite builds its own in-memory SQLite
+    engine in tests/conftest.py and overrides get_session.
+    """
     return create_engine(
         settings.database_url,
-        connect_args=(
-            {"check_same_thread": False}
-            if settings.database_url.startswith("sqlite")
-            else {}
-        ),
         echo=settings.debug,
-        pool_pre_ping=not settings.database_url.startswith("sqlite"),
+        pool_pre_ping=True,
     )
 
 
 def get_session() -> Generator[Session, None, None]:
-    engine = get_engine()
-    with Session(engine) as session:
+    with Session(get_engine()) as session:
         yield session
 
-
-def create_db_tables(engine=None) -> None:
-    if engine is None:
-        engine = get_engine()
-    SQLModel.metadata.create_all(engine)

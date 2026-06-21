@@ -1,23 +1,38 @@
 """Auth router."""
 
 import logging
-from datetime import timedelta
 from typing import Annotated
 
-from app.core.database import get_session
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-)
-from app.middleware.rate_limit import limiter
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from modules.auth.schema import LoginSchema, RegisterSchema, TokenResponse
-from modules.auth.service import authenticate_user, register_user
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlmodel import Session
+
+from app.core.database import get_session
+from app.middleware.rate_limit import limiter
+from modules.auth.schema import (
+    LoginSchema,
+    RefreshTokenRequest,
+    RegisterSchema,
+    TokenResponse,
+)
+from modules.auth.service import (
+    authenticate_user,
+    issue_token_pair,
+    refresh_token_pair,
+    register_user,
+)
+from modules.refresh_tokens import service as refresh_service
+from modules.refresh_tokens.schema import SignOutRequest
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def _mask_email(email: str) -> str:
+    """Mask an email for logging: 'dipto@x.com' -> 'd***@x.com'."""
+    local, _, domain = email.partition("@")
+    masked_local = (local[0] + "***") if local else "***"
+    return f"{masked_local}@{domain}"
 
 
 @router.post(
@@ -30,28 +45,13 @@ async def register(
     session: Annotated[Session, Depends(get_session)],
 ):
     """Register a new user and return tokens."""
-    logger.info(f"Registration attempt for email: {signup_data.email}")
+    logger.info(f"Registration attempt for email: {_mask_email(signup_data.email)}")
 
-    # Create user through service
     user = register_user(session, signup_data)
+    tokens, _ = issue_token_pair(session, user)
 
-    # Create token pair
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.email},
-        expires_delta=access_token_expires,
-    )
-    refresh_token = create_refresh_token(
-        data={"sub": user.email},
-    )
-
-    logger.info(f"User registered successfully: {user.email}")
-
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-    )
+    logger.info(f"User registered successfully: {user.id}")
+    return tokens
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -62,31 +62,54 @@ async def login(
     session: Annotated[Session, Depends(get_session)],
 ):
     """Authenticate user and return tokens."""
-    logger.info(f"Login attempt for email: {login_data.email}")
+    logger.info(f"Login attempt for email: {_mask_email(login_data.email)}")
 
     user = authenticate_user(session, login_data.email, login_data.password)
     if not user:
-        logger.warning(f"Failed login attempt for email: {login_data.email}")
+        logger.warning(f"Failed login attempt for email: {_mask_email(login_data.email)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Create token pair
-    access_token_expires = timedelta(minutes=30)
-    access_token = create_access_token(
-        data={"sub": user.email},
-        expires_delta=access_token_expires,
-    )
-    refresh_token = create_refresh_token(
-        data={"sub": user.email},
-    )
+    if not user.is_active:
+        logger.warning(f"Login attempt for inactive user: {user.id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is inactive",
+        )
 
-    logger.info(f"User logged in successfully: {user.email}")
+    tokens, _ = issue_token_pair(session, user)
 
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-    )
+    logger.info(f"User logged in successfully: {user.id}")
+    return tokens
+
+
+@router.post("/refresh", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def refresh(
+    request: Request,
+    body: RefreshTokenRequest,
+    session: Annotated[Session, Depends(get_session)],
+):
+    """Exchange a valid refresh token for a new token pair (rotation).
+
+    The presented refresh token is revoked and linked to its replacement.
+    Reusing an already-rotated token returns 401.
+    """
+    return refresh_token_pair(session, body.refresh_token)
+
+
+@router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT)
+async def sign_out(
+    session: Annotated[Session, Depends(get_session)],
+    body: SignOutRequest = Body(...),
+):
+    """Revoke a refresh token (logout). Expects JSON: {"refresh_token": "..."}.
+
+    Always returns 204 so the endpoint cannot be used to probe whether a
+    token exists; persistence errors still surface as 500.
+    """
+    refresh_service.revoke_by_token(session, body.refresh_token)
+    return None
