@@ -19,7 +19,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: http://localhost:3000, https://spendrift-fe-dev.vercel.app
+        value: http://localhost:3000, https://myspendrift.vercel.app
       # The Dockerfile CMD binds 8000; tell Render's router to use it.
       - key: PORT
         value: "8000"
