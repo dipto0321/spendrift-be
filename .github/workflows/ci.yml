@@ -8,9 +8,13 @@ on:
 
 env:
   # Test-only values; the suite runs against an in-memory SQLite engine
-  # and never reads DATABASE_URL at runtime.
+  # and never touches storage or the real database at runtime.
   SECRET_KEY: ci-only-secret-key-min-32-characters-long
   DATABASE_URL: "sqlite://"
+  STORAGE_ENDPOINT_URL: "https://dummy.example.com"
+  STORAGE_ACCESS_KEY_ID: "dummy-access-key-id"
+  STORAGE_SECRET_ACCESS_KEY: "dummy-secret-access-key"
+  STORAGE_BUCKET_NAME: "dummy-bucket"
 
 jobs:
   lint-and-test:
