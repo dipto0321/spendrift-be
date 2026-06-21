@@ -175,14 +175,39 @@ Never return data for a `tracker_id` without checking `tracker.user_id == curren
 - Use `make upgrade` to apply
 - Never edit existing migration files — create a new one
 
-## Git Rules
+## Git & GitHub Workflow Rules
 
-- Use Conventional Commits for commit messages: `type(scope): summary`
+This project uses **GitHub Flow**. There is no `dev` branch. `main` is always deployable.
+
+### Branching
+
+- Cut every branch directly from `main`
+- Branch naming: `feat/<short-description>`, `fix/<short-description>`, `chore/<short-description>`, `refactor/<short-description>`, `docs/<short-description>`
+- Keep branches short-lived — merge within days, not weeks
+- Delete the branch immediately after merging
+
+Examples:
+```
+feat/reports-module
+fix/budget-calculation
+chore/update-deps
+refactor/auth-service
+docs/api-endpoints
+```
+
+### Pull Requests
+
+- Open a PR to merge into `main` — never push directly to `main` for features
+- PR title should follow conventional commit format: `feat(expenses): add pagination`
+
+### Commits
+
+- Use Conventional Commits: `type(scope): summary`
 - Keep the subject short, imperative, and lowercase unless the proper noun needs capitals
 - Use a body with bullet points when the change spans multiple files or has important context
-- Commit reproducible project files together when they belong to the same change, such as `pyproject.toml` and `uv.lock`
+- Commit reproducible project files together when they belong to the same change (e.g. `pyproject.toml` and `uv.lock`)
 - Do not commit local-only editor or environment files unless the change is intentionally shared
-- Prefer focused commits: one logical change per commit
+- Prefer focused commits — one logical change per commit
 
 ---
 
