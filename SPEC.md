@@ -28,6 +28,11 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
   - PATCH /me/password (! current_password match)
   - POST/DELETE /me/avatar (≤1MB, jpeg|png|webp|gif)
 
+- api.preferences (prefix `/preferences`, NOT tracker-scoped, 1 row/user):
+  - GET "" → lazily creates default row (budget_alerts_enabled=true, weekly_summary_enabled=true, round_amounts_enabled=false) if none exists yet
+  - PUT "" → partial update, any subset of the 3 booleans
+  - budget_alerts_enabled gates FE call to /budget-alerts, not enforced server-side
+
 - api.trackers (prefix `/trackers`):
   - GET/POST "" ; GET/PATCH/DELETE /{id}
   - create seeds 10 DEFAULT_CATEGORIES
@@ -68,6 +73,7 @@ V18: category_budget.allocated_amount > 0
 V19: category_budget.category_id ! belong to same tracker as budget, else 400
 V20: category delete ⊥ allowed if ∃ category_budget referencing it → 409 (mirrors V6)
 V21: alembic/env.py ! import every SQLModel table module so target_metadata is complete; missing import → autogenerate proposes DROPPING the unlisted table
+V22: user_preferences ! ≤1 row per user_id (UNIQUE constraint); GET lazily creates default row instead of 404
 
 ## §T TASKS
 id|status|task|cites
@@ -84,6 +90,7 @@ T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited (g
 T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
+T14|x|preferences module: user_preferences table + GET/PUT (gh#16)|V22,I.preferences
 
 ## §B BUGS
 id|date|cause|fix

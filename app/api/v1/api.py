@@ -8,6 +8,7 @@ from modules.categories.router import router as categories_router
 from modules.category_budgets.router import router as category_budgets_router
 from modules.dashboard.router import router as dashboard_router
 from modules.expenses.router import router as expenses_router
+from modules.preferences.router import router as preferences_router
 from modules.reports.router import router as reports_router
 from modules.trackers.router import router as trackers_router
 from modules.users.router import router as users_router
@@ -24,3 +25,4 @@ api_router.include_router(budgets_router)
 api_router.include_router(category_budgets_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(reports_router)
+api_router.include_router(preferences_router, prefix="/preferences", tags=["Preferences"])

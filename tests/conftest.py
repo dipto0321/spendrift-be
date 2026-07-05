@@ -18,6 +18,7 @@ from sqlmodel.pool import StaticPool
 from modules.categories.model import Category  # noqa: F401
 from modules.categories import repo as category_repo
 from modules.expenses.model import Expense  # noqa: F401
+from modules.preferences.model import UserPreference  # noqa: F401
 from modules.refresh_tokens.model import RefreshToken  # noqa: F401
 from modules.trackers.model import Tracker
 from modules.trackers.schema import TrackerCreate

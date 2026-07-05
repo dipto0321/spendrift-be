@@ -118,6 +118,20 @@ backend/
 │ created_at    DATETIME  │     │ created_at    DATETIME  │
 └─────────────────────────┘     └─────────────────────────┘
              (audit trail of uploaded avatar files, for storage cleanup)
+             │ 1:1
+             ▼
+┌─────────────────────────┐
+│    user_preferences     │
+├─────────────────────────┤
+│ id              UUID PK │
+│ user_id        UUID FK  │→ users.id (CASCADE), UNIQUE
+│ budget_alerts_enabled BOOLEAN │← default: true
+│ weekly_summary_enabled BOOLEAN │← default: true
+│ round_amounts_enabled BOOLEAN │← default: false
+│ created_at    DATETIME  │
+│ updated_at    DATETIME  │
+└─────────────────────────┘
+     (Settings > Preferences toggles; lazily created on first GET)
 
 ┌─────────────────────────┐
 │        trackers         │
@@ -178,6 +192,7 @@ backend/
 |---|---|---|---|
 | users | refresh_tokens | `user_id` | CASCADE |
 | users | user_avatars | `user_id` | CASCADE |
+| users | user_preferences | `user_id` | CASCADE |
 | users | trackers | `user_id` | (no cascade set) |
 | trackers | categories | `tracker_id` | CASCADE |
 | trackers | expenses | `tracker_id` | CASCADE |
@@ -194,6 +209,7 @@ backend/
 | users | `name`, `created_at` | Lookup / ordering |
 | refresh_tokens | `token_hash` | Token lookup for refresh/validation |
 | user_avatars | `user_id` | List a user's avatar history |
+| user_preferences | `UNIQUE(user_id)` | One preferences row per user |
 | categories | `tracker_id` + `UNIQUE(tracker_id, name)` | List + enforce unique category names per tracker |
 | expenses | `tracker_id`, `date` | Date-range queries per tracker |
 | expenses | `tracker_id`, `category_id` | Category filter queries |
@@ -250,6 +266,15 @@ http://localhost:8000/api/v1
 | DELETE | `/users/me/avatar` | — | Same as above | Yes |
 
 Avatar uploads are capped at 1MB, restricted to `jpeg`/`png`/`webp`/`gif`, and stored in S3-compatible object storage (`app/core/storage/`). `avatar_url` is always a presigned URL or `null` — the raw storage key is never returned to clients.
+
+### Preferences
+
+| Method | Path | Body | Response | Auth |
+|---|---|---|---|---|
+| GET | `/preferences` | — | `{ id, user_id, budget_alerts_enabled, weekly_summary_enabled, round_amounts_enabled, created_at, updated_at }` | Yes |
+| PUT | `/preferences` | Partial subset of the three booleans | Same as GET | Yes |
+
+Not tracker-scoped — one row per user, account-wide. `GET` lazily creates a default row (`budget_alerts_enabled=true`, `weekly_summary_enabled=true`, `round_amounts_enabled=false`) on first call so the endpoint never 404s. `budget_alerts_enabled` gates whether the frontend calls/shows `/budget-alerts` (below) — the endpoint itself doesn't check the flag.
 
 ### Trackers
 

@@ -161,6 +161,7 @@ Base path: `/api/v1`
 |------------|------------------------------------------------|
 | Auth       | `POST /auth/{register,login,refresh,sign-out}` |
 | Users      | `GET/PATCH /users/me`, `PATCH /users/me/password`, `POST/DELETE /users/me/avatar` |
+| Preferences | `GET/PUT /preferences`                        |
 | Trackers   | `CRUD /trackers`                               |
 | Categories | `CRUD /trackers/{id}/categories`               |
 | Expenses   | `CRUD /trackers/{id}/expenses` (filter/sort/paginate) |
