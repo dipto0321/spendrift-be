@@ -39,8 +39,9 @@ Spendrift is a personal finance backend where each user can manage multiple **Tr
 ### Prerequisites
 
 - Docker (for PostgreSQL)
-- Python 3.12+
+- Python 3.11+
 - `uv` package manager
+- S3-compatible object storage (Cloudflare R2, MinIO, AWS S3) for avatar uploads
 
 ### Setup
 
@@ -53,7 +54,7 @@ pip install -e ".[postgres]"
 
 # 3. Copy and configure environment
 cp .env.example .env
-# Edit .env with your DATABASE_URL and SECRET_KEY
+# Edit .env with your DATABASE_URL, SECRET_KEY, and STORAGE_* credentials
 
 # 4. Apply migrations
 make upgrade
@@ -158,14 +159,14 @@ Base path: `/api/v1`
 
 | Group      | Endpoints                                      |
 |------------|------------------------------------------------|
-| Auth       | `POST /auth/register`, `POST /auth/login`      |
-| Users      | `GET /users/me`, `PATCH /users/me`             |
+| Auth       | `POST /auth/{register,login,refresh,sign-out}` |
+| Users      | `GET/PATCH /users/me`, `PATCH /users/me/password`, `POST/DELETE /users/me/avatar` |
 | Trackers   | `CRUD /trackers`                               |
 | Categories | `CRUD /trackers/{id}/categories`               |
-| Expenses   | `CRUD /trackers/{id}/expenses`                 |
-| Budgets    | `CRUD /trackers/{id}/budgets`                  |
+| Expenses   | `CRUD /trackers/{id}/expenses` (filter/sort/paginate) |
+| Budgets    | `CRUD /trackers/{id}/budgets`, `GET .../{id}/status` |
 | Dashboard  | `GET /trackers/{id}/dashboard`                 |
-| Reports    | `GET /trackers/{id}/reports`                   |
+| Reports    | `GET /trackers/{id}/reports/{summary,spending,category-breakdown,needs-vs-wants,year-comparison}` |
 
 ## Project Structure
 
