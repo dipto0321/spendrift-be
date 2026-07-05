@@ -157,6 +157,19 @@ backend/
 │ created_at    DATETIME  │
 │ updated_at    DATETIME  │
 └─────────────────────────┘
+
+┌─────────────────────────┐
+│    category_budgets     │← budgets.id (CASCADE) + categories.id (RESTRICT)
+├─────────────────────────┤
+│ id              UUID PK │
+│ budget_id      UUID FK  │→ budgets.id (CASCADE)
+│ category_id    UUID FK  │→ categories.id
+│ allocated_amount NUMERIC(12,2) │← > 0
+│ created_at    DATETIME  │
+│ updated_at    DATETIME  │
+│ UNIQUE(budget_id,category_id) │
+└─────────────────────────┘
+     (per-category allocation of a budget's monthly_limit)
 ```
 
 ### Relationships
@@ -170,6 +183,8 @@ backend/
 | trackers | expenses | `tracker_id` | CASCADE |
 | trackers | budgets | `tracker_id` | CASCADE |
 | categories | expenses | `category_id` | RESTRICT (blocked at service layer with 409 before it can surface as a DB error) |
+| budgets | category_budgets | `budget_id` | CASCADE |
+| categories | category_budgets | `category_id` | RESTRICT (blocked at service layer with 409 — same pattern as expenses) |
 
 ### Indexes
 
@@ -183,6 +198,7 @@ backend/
 | expenses | `tracker_id`, `date` | Date-range queries per tracker |
 | expenses | `tracker_id`, `category_id` | Category filter queries |
 | budgets | `UNIQUE(tracker_id, month)` | One budget per tracker per month |
+| category_budgets | `UNIQUE(budget_id, category_id)` | One allocation per category per budget |
 
 ### Multi-Tenancy Pattern
 
@@ -323,6 +339,17 @@ One budget per `(tracker_id, month)` — duplicate `month` on create returns 400
 | `spent < 80% of limit` | `green` (On Track) |
 | `spent < 95% of limit` | `yellow` (Caution) |
 | Otherwise | `red` (Over Budget) |
+
+### Category Budgets (per-category allocation)
+
+| Method | Path | Body | Response | Auth |
+|---|---|---|---|---|
+| GET | `/trackers/:trackerId/budgets/:budgetId/category-allocations` | — | `[{ category_id, category_name, category_color, allocated_amount, actual_amount, percentage_used }]` | Yes |
+| PUT | `/trackers/:trackerId/budgets/:budgetId/category-allocations` | `[{ category_id, allocated_amount }, ...]` | Same as GET (full replace) | Yes |
+
+`allocated_amount > 0`. `actual_amount` and `percentage_used` are computed server-side for the budget's month (same `month_bounds` helper used by `/status`). `percentage_used` is **not capped at 100** — overspend on a category allocation is a real signal.
+
+PUT is a full replace: existing allocations for the budget are deleted and the new set inserted in one call — there's no partial-update endpoint. A duplicate `category_id` in the payload returns 400, as does a `category_id` from a different tracker. Deleting a category that still has an allocation returns 409 (mirrors the existing expense-reference check on category delete).
 
 ### Dashboard
 

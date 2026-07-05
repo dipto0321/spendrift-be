@@ -9,6 +9,7 @@ from sqlmodel import Session
 from modules.categories import repo as category_repo
 from modules.categories.model import Category
 from modules.categories.schema import CategoryCreate, CategoryUpdate
+from modules.category_budgets import repo as category_budget_repo
 from modules.expenses import repo as expense_repo
 from modules.trackers import service as tracker_service
 
@@ -119,8 +120,8 @@ def delete_category(
 ) -> None:
     """Delete a category from a tracker.
 
-    409 if any expenses still reference the category (the DB-level
-    RESTRICT would otherwise surface as an opaque 500).
+    409 if any expenses or budget allocations still reference the category
+    (the DB-level RESTRICT would otherwise surface as an opaque 500).
     """
     category = get_category_or_404(session, tracker_id, category_id, user_id)
 
@@ -131,6 +132,16 @@ def delete_category(
             detail=(
                 f"Category has {expense_count} expense(s). "
                 "Reassign or delete them first."
+            ),
+        )
+
+    allocation_count = category_budget_repo.count_by_category(session, category_id)
+    if allocation_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Category has {allocation_count} budget allocation(s). "
+                "Remove them first."
             ),
         )
 
