@@ -63,3 +63,25 @@ class BudgetStatusResponse(BaseModel):
     savings_progress: int = Field(description="0-100")
     savings_health: SavingsHealth
     is_over_budget: bool
+
+
+class BudgetCurrentResponse(BaseModel):
+    """A budget plus its computed status, for a given (or the current) month.
+
+    Combines BudgetResponse + BudgetStatusResponse into a single payload so
+    callers don't need a list-then-status round trip.
+    """
+
+    id: UUID
+    tracker_id: UUID
+    name: str
+    monthly_limit: Decimal
+    savings_target: Decimal
+    month: str
+    created_at: datetime
+    updated_at: datetime
+    spent: Decimal
+    remaining: Decimal
+    savings_progress: int = Field(description="0-100")
+    savings_health: SavingsHealth
+    is_over_budget: bool

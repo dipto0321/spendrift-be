@@ -1,7 +1,7 @@
 """Budget service - business logic."""
 
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -12,6 +12,7 @@ from modules.budgets import repo as budget_repo
 from modules.budgets.model import Budget
 from modules.budgets.schema import (
     BudgetCreate,
+    BudgetCurrentResponse,
     BudgetStatusResponse,
     BudgetUpdate,
     SavingsHealth,
@@ -20,6 +21,10 @@ from modules.expenses import repo as expense_repo
 from modules.trackers import service as tracker_service
 
 logger = logging.getLogger(__name__)
+
+
+def _current_month() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m")
 
 
 def get_budget_or_404(
@@ -135,12 +140,13 @@ def _savings_health(
     return SavingsHealth.RED
 
 
-def get_budget_status(
-    session: Session, tracker_id: UUID, budget_id: UUID, user_id: UUID
-) -> BudgetStatusResponse:
-    """Compute spending status for a budget's month."""
-    budget = get_budget_or_404(session, tracker_id, budget_id, user_id)
+def _compute_status(session: Session, tracker_id: UUID, budget: Budget) -> dict:
+    """Shared spending-status math for a budget's month.
 
+    Returns a dict of the BudgetStatusResponse/BudgetCurrentResponse
+    overlapping fields (spent, remaining, savings_progress, savings_health,
+    is_over_budget) so both response shapes can be built from one place.
+    """
     start, end = month_bounds(budget.month)
     spent = expense_repo.sum_expenses_amount(session, tracker_id, start, end)
 
@@ -153,12 +159,51 @@ def get_budget_status(
         # No savings target set: staying within budget counts as on track.
         savings_progress = 100 if remaining >= 0 else 0
 
-    return BudgetStatusResponse(
-        spent=spent,
-        remaining=remaining,
-        savings_progress=savings_progress,
-        savings_health=_savings_health(
+    return {
+        "spent": spent,
+        "remaining": remaining,
+        "savings_progress": savings_progress,
+        "savings_health": _savings_health(
             spent, budget.monthly_limit, budget.savings_target
         ),
-        is_over_budget=spent > budget.monthly_limit,
+        "is_over_budget": spent > budget.monthly_limit,
+    }
+
+
+def get_budget_status(
+    session: Session, tracker_id: UUID, budget_id: UUID, user_id: UUID
+) -> BudgetStatusResponse:
+    """Compute spending status for a budget's month."""
+    budget = get_budget_or_404(session, tracker_id, budget_id, user_id)
+    return BudgetStatusResponse(**_compute_status(session, tracker_id, budget))
+
+
+def get_current_budget(
+    session: Session,
+    tracker_id: UUID,
+    user_id: UUID,
+    month: str | None = None,
+) -> BudgetCurrentResponse | None:
+    """Fetch the budget for a month (default: current UTC month) plus its
+    computed status in one call, avoiding a list-then-status round trip.
+
+    Returns None if no budget exists for that month.
+    """
+    tracker_service.get_tracker_or_404(session, tracker_id, user_id)
+    month = month or _current_month()
+
+    budget = budget_repo.get_budget_by_month(session, tracker_id, month)
+    if budget is None:
+        return None
+
+    return BudgetCurrentResponse(
+        id=budget.id,
+        tracker_id=budget.tracker_id,
+        name=budget.name,
+        monthly_limit=budget.monthly_limit,
+        savings_target=budget.savings_target,
+        month=budget.month,
+        created_at=budget.created_at,
+        updated_at=budget.updated_at,
+        **_compute_status(session, tracker_id, budget),
     )
