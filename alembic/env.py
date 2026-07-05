@@ -16,7 +16,9 @@ from sqlmodel import SQLModel
 
 import alembic.context as context
 from app.core.config import settings
+from modules.budgets.model import Budget  # noqa
 from modules.categories.model import Category  # noqa
+from modules.category_budgets.model import CategoryBudget  # noqa
 from modules.expenses.model import Expense  # noqa
 from modules.refresh_tokens.model import RefreshToken  # noqa
 from modules.trackers.model import Tracker  # noqa

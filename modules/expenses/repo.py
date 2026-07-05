@@ -154,6 +154,31 @@ def sum_expenses_amount(
     return Decimal(total) if total is not None else Decimal("0")
 
 
+def sum_expenses_amount_by_category(
+    session: Session,
+    tracker_id: UUID,
+    category_ids: list[UUID],
+    start_date: date_type,
+    end_date: date_type,
+) -> dict[UUID, Decimal]:
+    """Sum expense amounts per category for a tracker in [start_date, end_date).
+
+    One grouped query instead of one sum() call per category.
+    """
+    if not category_ids:
+        return {}
+
+    rows = session.exec(
+        select(Expense.category_id, func.sum(Expense.amount))
+        .where(Expense.tracker_id == tracker_id)
+        .where(Expense.category_id.in_(category_ids))  # type: ignore[attr-defined]
+        .where(Expense.date >= start_date)
+        .where(Expense.date < end_date)
+        .group_by(Expense.category_id)  # type: ignore[arg-type]
+    ).all()
+    return {row[0]: Decimal(row[1]) for row in rows}
+
+
 def count_expenses_by_category(session: Session, category_id: UUID) -> int:
     """Count expenses currently assigned to a category."""
     return session.exec(
