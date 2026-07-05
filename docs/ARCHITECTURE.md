@@ -376,6 +376,16 @@ One budget per `(tracker_id, month)` — duplicate `month` on create returns 400
 
 PUT is a full replace: existing allocations for the budget are deleted and the new set inserted in one call — there's no partial-update endpoint. A duplicate `category_id` in the payload returns 400, as does a `category_id` from a different tracker. Deleting a category that still has an allocation returns 409 (mirrors the existing expense-reference check on category delete).
 
+### Budget Alerts (per-category threshold status)
+
+| Method | Path | Query | Response | Auth |
+|---|---|---|---|---|
+| GET | `/trackers/:trackerId/budget-alerts` | `?month=YYYY-MM` (default: current UTC month) | `[{ category_id, category_name, spent, limit, percentage, level }]` | Yes |
+
+Aggregation only (no `model.py`) — reuses the budget's category allocations (`category_budgets`) and the same actual-spend aggregation as `/category-allocations` rather than duplicating the query. Returns `[]` if no budget exists for the month, or the budget has no category allocations set up yet.
+
+`level` is one of `ok` / `warning` / `exceeded`, from fixed thresholds (`modules/budget_alerts/service.py`): `< 80%` → `ok`, `80–99%` → `warning`, `>= 100%` → `exceeded`. The frontend's `budget_alerts_enabled` account preference decides whether to call/show this — the endpoint itself doesn't gate on the flag.
+
 ### Dashboard
 
 | Method | Path | Query | Response | Auth |

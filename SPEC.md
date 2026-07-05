@@ -45,6 +45,8 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
 
 - api.category_budgets (`/trackers/{tracker_id}/budgets/{budget_id}/category-allocations`) — GET list, PUT full-replace `[{category_id,allocated_amount}]`. resp adds actual_amount+percentage_used computed for budget's month (percentage_used ⊥ capped @100)
 
+- api.budget_alerts (`/trackers/{tracker_id}/budget-alerts`) — GET ?month=YYYY-MM (default current UTC month) → `[{category_id,category_name,spent,limit,percentage,level}]`. level ∈ {ok,warning,exceeded} from fixed thresholds (80%/100%). reuses category_budgets allocations + same actual-spend aggregation, ⊥ new table. [] if no budget for month or no allocations set
+
 - api.dashboard (`/trackers/{tracker_id}/dashboard`) — GET ?month=YYYY-MM (default current UTC month) → total_spent, expense_count, needs/wants split, top-5 categories, budget snapshot
 
 - api.reports (`/trackers/{tracker_id}/reports`) — GET /summary, /spending?period=weekly|monthly|yearly, /category-breakdown, /needs-vs-wants, /year-comparison
@@ -74,6 +76,7 @@ V19: category_budget.category_id ! belong to same tracker as budget, else 400
 V20: category delete ⊥ allowed if ∃ category_budget referencing it → 409 (mirrors V6)
 V21: alembic/env.py ! import every SQLModel table module so target_metadata is complete; missing import → autogenerate proposes DROPPING the unlisted table
 V22: user_preferences ! ≤1 row per user_id (UNIQUE constraint); GET lazily creates default row instead of 404
+V23: budget alert level thresholds fixed constants (WARNING_THRESHOLD=80, EXCEEDED_THRESHOLD=100), ⊥ magic numbers scattered in code
 
 ## §T TASKS
 id|status|task|cites
@@ -91,6 +94,7 @@ T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
 T14|x|preferences module: user_preferences table + GET/PUT (gh#16)|V22,I.preferences
+T15|x|budget_alerts module: per-category threshold status (gh#17)|V23,I.budget_alerts
 
 ## §B BUGS
 id|date|cause|fix
