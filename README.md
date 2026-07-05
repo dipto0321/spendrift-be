@@ -166,6 +166,7 @@ Base path: `/api/v1`
 | Categories | `CRUD /trackers/{id}/categories`               |
 | Expenses   | `CRUD /trackers/{id}/expenses` (filter/sort/paginate) |
 | Budgets    | `CRUD /trackers/{id}/budgets`, `GET .../{id}/status` |
+| Budget Alerts | `GET /trackers/{id}/budget-alerts`          |
 | Dashboard  | `GET /trackers/{id}/dashboard`                 |
 | Reports    | `GET /trackers/{id}/reports/{summary,spending,category-breakdown,needs-vs-wants,year-comparison}` |
 

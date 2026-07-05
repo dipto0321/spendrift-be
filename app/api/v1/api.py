@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from modules.auth.router import router as auth_router
+from modules.budget_alerts.router import router as budget_alerts_router
 from modules.budgets.router import router as budgets_router
 from modules.categories.router import router as categories_router
 from modules.category_budgets.router import router as category_budgets_router
@@ -23,6 +24,7 @@ api_router.include_router(categories_router)
 api_router.include_router(expenses_router)
 api_router.include_router(budgets_router)
 api_router.include_router(category_budgets_router)
+api_router.include_router(budget_alerts_router)
 api_router.include_router(dashboard_router)
 api_router.include_router(reports_router)
 api_router.include_router(preferences_router, prefix="/preferences", tags=["Preferences"])
