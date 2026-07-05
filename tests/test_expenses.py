@@ -189,6 +189,54 @@ def test_list_and_filter_expenses(
 
 
 # --------------------------------------------------------------------------- #
+# X-Total-Count header (pagination)
+# --------------------------------------------------------------------------- #
+def test_list_expenses_sets_total_count_header(
+    client: TestClient, tracker: Tracker, category_id: str, auth_headers: dict
+):
+    for i in range(3):
+        resp = client.post(
+            _expenses_url(tracker.id),
+            json=_make_payload(category_id, amount=f"{i + 1}.00"),
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+
+    resp = client.get(_expenses_url(tracker.id), headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.headers["x-total-count"] == "3"
+    assert len(resp.json()) == 3
+
+
+def test_total_count_reflects_filters_not_just_page(
+    client: TestClient, tracker: Tracker, category_id: str, auth_headers: dict
+):
+    for i in range(5):
+        resp = client.post(
+            _expenses_url(tracker.id),
+            json=_make_payload(category_id, amount=f"{i + 1}.00"),
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+
+    # limit=2 truncates the page, but the header must report all 5 matches.
+    resp = client.get(
+        f"{_expenses_url(tracker.id)}?limit=2", headers=auth_headers
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+    assert resp.headers["x-total-count"] == "5"
+
+
+def test_total_count_zero_when_no_expenses(
+    client: TestClient, tracker: Tracker, auth_headers: dict
+):
+    resp = client.get(_expenses_url(tracker.id), headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.headers["x-total-count"] == "0"
+
+
+# --------------------------------------------------------------------------- #
 # Get / not found
 # --------------------------------------------------------------------------- #
 def test_get_expense(

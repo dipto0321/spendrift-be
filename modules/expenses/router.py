@@ -4,7 +4,7 @@ from datetime import date
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -40,6 +40,7 @@ def list_expenses(
     tracker_id: UUID,
     session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],
+    response: Response,
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     category_ids: str | None = Query(
@@ -53,16 +54,33 @@ def list_expenses(
 ):
     """List expenses for a tracker workspace, with optional filters.
 
-    Paginated: returns at most `limit` rows starting at `offset`.
+    Paginated: returns at most `limit` rows starting at `offset`. The total
+    number of matching rows (ignoring limit/offset) is set on the
+    X-Total-Count response header so clients can build pagination UI.
     """
+    parsed_category_ids = _parse_category_ids(category_ids)
+    expense_type = type.value if type else None
+
+    total = expense_service.count_expenses(
+        session,
+        tracker_id,
+        current_user.id,
+        start_date=start_date,
+        end_date=end_date,
+        category_ids=parsed_category_ids,
+        expense_type=expense_type,
+        search=search,
+    )
+    response.headers["X-Total-Count"] = str(total)
+
     return expense_service.list_expenses(
         session,
         tracker_id,
         current_user.id,
         start_date=start_date,
         end_date=end_date,
-        category_ids=_parse_category_ids(category_ids),
-        expense_type=type.value if type else None,
+        category_ids=parsed_category_ids,
+        expense_type=expense_type,
         search=search,
         sort=sort,
         limit=limit,

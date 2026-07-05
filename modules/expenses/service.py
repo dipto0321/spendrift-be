@@ -77,6 +77,33 @@ def list_expenses(
     )
 
 
+def count_expenses(
+    session: Session,
+    tracker_id: UUID,
+    user_id: UUID,
+    *,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
+    category_ids: list[UUID] | None = None,
+    expense_type: str | None = None,
+    search: str | None = None,
+) -> int:
+    """Count expenses matching the same filters as list_expenses (no paging).
+
+    Used to populate the X-Total-Count header so clients can paginate.
+    """
+    tracker_service.get_tracker_or_404(session, tracker_id, user_id)
+    return expense_repo.count_expenses(
+        session,
+        tracker_id,
+        start_date=start_date,
+        end_date=end_date,
+        category_ids=category_ids,
+        expense_type=expense_type,
+        search=search,
+    )
+
+
 def create_expense(
     session: Session, tracker_id: UUID, user_id: UUID, data: ExpenseCreate
 ) -> Expense:
