@@ -1,5 +1,6 @@
 """Tests for the budgets module."""
 
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -294,3 +295,73 @@ def test_status_december_month_bounds(
 
     status = _get_status(client, tracker.id, budget["id"], auth_headers)
     assert Decimal(str(status["spent"])) == Decimal("80.00")
+
+
+# --------------------------------------------------------------------------- #
+# GET /budgets/current — budget + status in one call, for a given/default month
+# --------------------------------------------------------------------------- #
+
+
+def _get_current(client, tracker_id, headers, month: str | None = None):
+    params = {"month": month} if month else {}
+    return client.get(
+        f"{_budgets_url(tracker_id)}/current", params=params, headers=headers
+    )
+
+
+def test_current_budget_returns_budget_and_status(
+    client: TestClient, tracker: Tracker, auth_headers, category_id
+):
+    budget = _create_budget(client, tracker.id, auth_headers)
+    _add_expense(client, tracker.id, auth_headers, category_id, "100.00", "2026-06-10")
+
+    response = _get_current(client, tracker.id, auth_headers, month="2026-06")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["id"] == budget["id"]
+    assert body["tracker_id"] == str(tracker.id)
+    assert body["month"] == "2026-06"
+    assert Decimal(str(body["monthly_limit"])) == Decimal("1000.00")
+    assert Decimal(str(body["spent"])) == Decimal("100.00")
+    assert Decimal(str(body["remaining"])) == Decimal("900.00")
+    assert body["savings_health"] == "green"
+    assert body["is_over_budget"] is False
+
+
+def test_current_budget_defaults_to_current_month(
+    client: TestClient, tracker: Tracker, auth_headers
+):
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    _create_budget(client, tracker.id, auth_headers, month=current_month)
+
+    response = _get_current(client, tracker.id, auth_headers)
+    assert response.status_code == 200, response.text
+    assert response.json()["month"] == current_month
+
+
+def test_current_budget_no_budget_for_month_returns_204(
+    client: TestClient, tracker: Tracker, auth_headers
+):
+    response = _get_current(client, tracker.id, auth_headers, month="2026-06")
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_current_budget_requires_auth(client: TestClient, tracker: Tracker):
+    response = client.get(f"{_budgets_url(tracker.id)}/current")
+    assert response.status_code == 401
+
+
+def test_current_budget_other_user_gets_404(
+    client: TestClient, tracker: Tracker, auth_headers, other_auth_headers
+):
+    _create_budget(client, tracker.id, auth_headers)
+    response = _get_current(client, tracker.id, other_auth_headers, month="2026-06")
+    assert response.status_code == 404
+
+
+def test_current_budget_invalid_month_rejected(
+    client: TestClient, tracker: Tracker, auth_headers
+):
+    response = _get_current(client, tracker.id, auth_headers, month="not-a-month")
+    assert response.status_code == 422

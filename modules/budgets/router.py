@@ -3,7 +3,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlmodel import Session
 
 from app.core.database import get_session
@@ -12,6 +12,7 @@ from modules.budgets import service as budget_service
 from modules.budgets.schema import (
     MONTH_PATTERN,
     BudgetCreate,
+    BudgetCurrentResponse,
     BudgetResponse,
     BudgetStatusResponse,
     BudgetUpdate,
@@ -19,6 +20,31 @@ from modules.budgets.schema import (
 from modules.users.model import User
 
 router = APIRouter(prefix="/trackers/{tracker_id}/budgets", tags=["Budgets"])
+
+
+@router.get("/current", response_model=BudgetCurrentResponse | None)
+def get_current_budget(
+    tracker_id: UUID,
+    session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+    response: Response,
+    month: str | None = Query(
+        default=None,
+        pattern=MONTH_PATTERN,
+        description="Month to look up (YYYY-MM); defaults to the current month",
+    ),
+):
+    """Get the budget + computed status for a month in one call.
+
+    Registered before `/{budget_id}` so the literal `current` segment isn't
+    matched as a budget UUID. Returns 204 if no budget exists for the month.
+    """
+    result = budget_service.get_current_budget(
+        session, tracker_id, current_user.id, month=month
+    )
+    if result is None:
+        response.status_code = status.HTTP_204_NO_CONTENT
+    return result
 
 
 @router.get("", response_model=list[BudgetResponse])
