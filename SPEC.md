@@ -79,8 +79,8 @@ T5|x|expenses module|V7,V8,I.expenses
 T6|x|budgets module + status calc|V9,V10,I.budgets
 T7|x|dashboard aggregation|I.dashboard
 T8|x|reports aggregation|I.reports
-T9|.|receipts/attachments upload ? storage protocol only wired to avatars today|I.storage
-T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited|I.auth
+T9|.|receipts/attachments upload ? storage protocol only wired to avatars today (gh#13)|I.storage
+T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited (gh#14)|I.auth
 T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
