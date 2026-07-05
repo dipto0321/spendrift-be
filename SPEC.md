@@ -38,6 +38,8 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
 
 - api.budgets (`/trackers/{tracker_id}/budgets`) — CRUD + GET /{id}/status (spent, remaining, savings_progress%, savings_health traffic-light, is_over_budget) + GET /current?month=YYYY-MM (default current month; budget+status merged in one call; 204 if none for month; registered before /{id})
 
+- api.category_budgets (`/trackers/{tracker_id}/budgets/{budget_id}/category-allocations`) — GET list, PUT full-replace `[{category_id,allocated_amount}]`. resp adds actual_amount+percentage_used computed for budget's month (percentage_used ⊥ capped @100)
+
 - api.dashboard (`/trackers/{tracker_id}/dashboard`) — GET ?month=YYYY-MM (default current UTC month) → total_spent, expense_count, needs/wants split, top-5 categories, budget snapshot
 
 - api.reports (`/trackers/{tracker_id}/reports`) — GET /summary, /spending?period=weekly|monthly|yearly, /category-breakdown, /needs-vs-wants, /year-comparison
@@ -61,6 +63,11 @@ V13: repo.py ⊥ raise HTTPException (layer boundary)
 V14: repo.py ⊥ contain aggregation/analytics SQL (belongs service or reports)
 V15: sign-out ! always 204 regardless of token validity (anti-enumeration)
 V16: registration ⊥ allowed if `ALLOW_REGISTRATION`=false → 403
+V17: category_budget ! ≤1 per (budget_id, category_id) → dup in PUT payload → 400
+V18: category_budget.allocated_amount > 0
+V19: category_budget.category_id ! belong to same tracker as budget, else 400
+V20: category delete ⊥ allowed if ∃ category_budget referencing it → 409 (mirrors V6)
+V21: alembic/env.py ! import every SQLModel table module so target_metadata is complete; missing import → autogenerate proposes DROPPING the unlisted table
 
 ## §T TASKS
 id|status|task|cites
@@ -76,6 +83,8 @@ T9|.|receipts/attachments upload ? storage protocol only wired to avatars today|
 T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited|I.auth
 T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
+T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
 
 ## §B BUGS
 id|date|cause|fix
+B1|2026-07-05|alembic/env.py missed importing Budget model ∴ target_metadata ⊥ know budgets table exists ∴ autogenerate would propose DROP TABLE budgets|added missing import (+ CategoryBudget). §V21
