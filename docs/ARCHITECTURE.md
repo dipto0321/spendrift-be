@@ -58,7 +58,7 @@ backend/
 │   │       ├── base.py               # StorageBackend Protocol
 │   │       └── s3.py                 # S3StorageBackend (R2/MinIO/AWS)
 │   └── middleware/
-│       └── rate_limit.py             # SlowAPI rate limiter (auth routes only)
+│       └── rate_limit.py             # SlowAPI rate limiter (tighter auth limits + global default)
 │
 ├── modules/                          # Feature modules (one folder per domain)
 │   ├── auth/                         # register, login, refresh, sign-out
@@ -254,6 +254,8 @@ http://localhost:8000/api/v1
 | POST | `/auth/sign-out` | `{ refresh_token }` | — (204, always, anti-enumeration) | No | unlimited |
 
 `ALLOW_REGISTRATION=false` disables `/auth/register` (403) without touching other routes — a kill switch for deployments where sign-ups should be closed.
+
+**Global default rate limit:** every other `/api/v1` route (expenses, budgets, categories, trackers, preferences, dashboard, reports, etc.) is limited to **60 requests/minute per IP** (`DEFAULT_RATE_LIMIT` in `app/middleware/rate_limit.py`), applied automatically by `SlowAPIMiddleware` to any route without its own `@limiter.limit(...)` decorator. `/auth/register`, `/auth/login`, and `/auth/refresh` keep their tighter explicit limits above instead of stacking with the default. `/auth/sign-out` is marked `@limiter.exempt` and stays unlimited.
 
 ### Users
 

@@ -21,7 +21,9 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
   - POST /login → token pair; 401 bad creds; 403 inactive
   - POST /refresh → rotate refresh (one-time use); 401 invalid/reused/expired
   - POST /sign-out → 204 always (anti-enum)
-  - rate limit (SlowAPI, IP-keyed): register 3/min, login 5/min, refresh 10/min, sign-out unlimited
+  - rate limit (SlowAPI, IP-keyed): register 3/min, login 5/min, refresh 10/min (own decorator, ⊥ stacked w/ default), sign-out @limiter.exempt (unlimited)
+
+- global default rate limit: DEFAULT_RATE_LIMIT=60/min per IP (`app/middleware/rate_limit.py`), auto-applied by SlowAPIMiddleware to ∀ route ⊥ own `@limiter.limit(...)` decorator
 
 - api.users (prefix `/users`):
   - GET/PATCH /me
@@ -77,6 +79,7 @@ V20: category delete ⊥ allowed if ∃ category_budget referencing it → 409 (
 V21: alembic/env.py ! import every SQLModel table module so target_metadata is complete; missing import → autogenerate proposes DROPPING the unlisted table
 V22: user_preferences ! ≤1 row per user_id (UNIQUE constraint); GET lazily creates default row instead of 404
 V23: budget alert level thresholds fixed constants (WARNING_THRESHOLD=80, EXCEEDED_THRESHOLD=100), ⊥ magic numbers scattered in code
+V24: ∀ route ⊥ own rate-limit decorator → global default (60/min/IP) applies via SlowAPIMiddleware; sign-out excluded via @limiter.exempt, register/login/refresh excluded via their own decorator (⊥ stacked)
 
 ## §T TASKS
 id|status|task|cites
@@ -89,7 +92,7 @@ T6|x|budgets module + status calc|V9,V10,I.budgets
 T7|x|dashboard aggregation|I.dashboard
 T8|x|reports aggregation|I.reports
 T9|.|receipts/attachments upload ? storage protocol only wired to avatars today (gh#13)|I.storage
-T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited (gh#14)|I.auth
+T10|x|global default rate limit (60/min/IP) extended to all routes (gh#14)|V24,I.auth
 T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets

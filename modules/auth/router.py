@@ -102,6 +102,7 @@ async def refresh(
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.exempt
 async def sign_out(
     session: Annotated[Session, Depends(get_session)],
     body: SignOutRequest = Body(...),
@@ -109,7 +110,8 @@ async def sign_out(
     """Revoke a refresh token (logout). Expects JSON: {"refresh_token": "..."}.
 
     Always returns 204 so the endpoint cannot be used to probe whether a
-    token exists; persistence errors still surface as 500.
+    token exists; persistence errors still surface as 500. Exempt from the
+    global default rate limit — unlimited, same as before this was added.
     """
     refresh_service.revoke_by_token(session, body.refresh_token)
     return None
