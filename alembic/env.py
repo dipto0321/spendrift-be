@@ -20,6 +20,7 @@ from modules.budgets.model import Budget  # noqa
 from modules.categories.model import Category  # noqa
 from modules.category_budgets.model import CategoryBudget  # noqa
 from modules.expenses.model import Expense  # noqa
+from modules.preferences.model import UserPreference  # noqa
 from modules.refresh_tokens.model import RefreshToken  # noqa
 from modules.trackers.model import Tracker  # noqa
 
