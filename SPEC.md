@@ -36,7 +36,7 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
 
 - api.expenses (`/trackers/{tracker_id}/expenses`) — CRUD + filter (start/end date, category_ids CSV, type, search, sort, limit 1-200 default 50, offset)
 
-- api.budgets (`/trackers/{tracker_id}/budgets`) — CRUD + GET /{id}/status (spent, remaining, savings_progress%, savings_health traffic-light, is_over_budget)
+- api.budgets (`/trackers/{tracker_id}/budgets`) — CRUD + GET /{id}/status (spent, remaining, savings_progress%, savings_health traffic-light, is_over_budget) + GET /current?month=YYYY-MM (default current month; budget+status merged in one call; 204 if none for month; registered before /{id})
 
 - api.dashboard (`/trackers/{tracker_id}/dashboard`) — GET ?month=YYYY-MM (default current UTC month) → total_spent, expense_count, needs/wants split, top-5 categories, budget snapshot
 
@@ -74,6 +74,7 @@ T7|x|dashboard aggregation|I.dashboard
 T8|x|reports aggregation|I.reports
 T9|.|receipts/attachments upload ? storage protocol only wired to avatars today|I.storage
 T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited|I.auth
+T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
 
 ## §B BUGS
 id|date|cause|fix

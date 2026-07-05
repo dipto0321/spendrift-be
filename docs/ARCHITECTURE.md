@@ -292,10 +292,13 @@ Avatar uploads are capped at 1MB, restricted to `jpeg`/`png`/`webp`/`gif`, and s
 | POST | `/trackers/:trackerId/budgets` | `{ name, monthly_limit, savings_target, month }` | Same as above (201) | Yes |
 | GET | `/trackers/:trackerId/budgets/:id` | — | Same as above | Yes |
 | GET | `/trackers/:trackerId/budgets/:id/status` | — | Budget status object (below) | Yes |
+| GET | `/trackers/:trackerId/budgets/current` | `?month=YYYY-MM` (default: current UTC month) | Budget + status merged (below), or 204 if none for that month | Yes |
 | PATCH | `/trackers/:trackerId/budgets/:id` | Partial budget object | Same as budget response | Yes |
 | DELETE | `/trackers/:trackerId/budgets/:id` | — | — (204) | Yes |
 
 One budget per `(tracker_id, month)` — duplicate `month` on create returns 400. `monthly_limit > 0`, `savings_target >= 0`.
+
+`/current` combines the list-then-status waterfall (list budgets, find the one for the month, fetch its status) into one call. It's registered before `/:id` so the literal `current` segment isn't matched as a budget UUID.
 
 **Budget Status Object (computed server-side):**
 
