@@ -34,7 +34,7 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
 
 - api.categories (`/trackers/{tracker_id}/categories`) — CRUD
 
-- api.expenses (`/trackers/{tracker_id}/expenses`) — CRUD + filter (start/end date, category_ids CSV, type, search, sort, limit 1-200 default 50, offset)
+- api.expenses (`/trackers/{tracker_id}/expenses`) — CRUD + filter (start/end date, category_ids CSV, type, search, sort, limit 1-200 default 50, offset). list resp ! set `X-Total-Count` header = total matches (filters applied, limit/offset ignored); CORS `expose_headers` ! include it or browser JS can't read it
 
 - api.budgets (`/trackers/{tracker_id}/budgets`) — CRUD + GET /{id}/status (spent, remaining, savings_progress%, savings_health traffic-light, is_over_budget) + GET /current?month=YYYY-MM (default current month; budget+status merged in one call; 204 if none for month; registered before /{id})
 
@@ -75,6 +75,7 @@ T8|x|reports aggregation|I.reports
 T9|.|receipts/attachments upload ? storage protocol only wired to avatars today|I.storage
 T10|.|per-route rate limits ? only auth routes limited, rest of API unlimited|I.auth
 T11|x|GET /budgets/current shortcut (gh#7)|V9,V10,I.budgets
+T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 
 ## §B BUGS
 id|date|cause|fix
