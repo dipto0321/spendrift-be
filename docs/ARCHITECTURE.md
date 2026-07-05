@@ -284,6 +284,8 @@ Avatar uploads are capped at 1MB, restricted to `jpeg`/`png`/`webp`/`gif`, and s
 
 `amount` must be `> 0`; `category_id` must belong to the same tracker as the expense (else 400).
 
+The list response sets an `X-Total-Count` header with the total number of matching rows (filters applied, `limit`/`offset` ignored), so clients can build pagination UI without a separate count call. CORS explicitly exposes this header (`expose_headers` in `app/main.py`) — custom response headers are otherwise invisible to browser JS across origins.
+
 ### Budgets
 
 | Method | Path | Body / Query | Response | Auth |

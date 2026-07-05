@@ -33,6 +33,34 @@ def get_expense_by_id(session: Session, expense_id: UUID) -> Expense | None:
     return session.exec(select(Expense).where(Expense.id == expense_id)).first()
 
 
+def _apply_filters(
+    statement,
+    tracker_id: UUID,
+    *,
+    start_date: date_type | None,
+    end_date: date_type | None,
+    category_ids: list[UUID] | None,
+    expense_type: str | None,
+    search: str | None,
+):
+    """Apply the shared WHERE clauses used by both list_expenses and
+    count_expenses, so the two can never drift out of sync."""
+    statement = statement.where(Expense.tracker_id == tracker_id)
+
+    if start_date is not None:
+        statement = statement.where(Expense.date >= start_date)
+    if end_date is not None:
+        statement = statement.where(Expense.date <= end_date)
+    if category_ids:
+        statement = statement.where(Expense.category_id.in_(category_ids))  # type: ignore[attr-defined]
+    if expense_type is not None:
+        statement = statement.where(Expense.type == expense_type)
+    if search:
+        statement = statement.where(Expense.description.ilike(f"%{search}%"))  # type: ignore[union-attr]
+
+    return statement
+
+
 def list_expenses(
     session: Session,
     tracker_id: UUID,
@@ -47,18 +75,15 @@ def list_expenses(
     offset: int = 0,
 ) -> list[Expense]:
     """List expenses for a tracker, with optional filters, sorting, paging."""
-    statement = select(Expense).where(Expense.tracker_id == tracker_id)
-
-    if start_date is not None:
-        statement = statement.where(Expense.date >= start_date)
-    if end_date is not None:
-        statement = statement.where(Expense.date <= end_date)
-    if category_ids:
-        statement = statement.where(Expense.category_id.in_(category_ids))  # type: ignore[attr-defined]
-    if expense_type is not None:
-        statement = statement.where(Expense.type == expense_type)
-    if search:
-        statement = statement.where(Expense.description.ilike(f"%{search}%"))  # type: ignore[union-attr]
+    statement = _apply_filters(
+        select(Expense),
+        tracker_id,
+        start_date=start_date,
+        end_date=end_date,
+        category_ids=category_ids,
+        expense_type=expense_type,
+        search=search,
+    )
 
     if sort == ExpenseSort.DATE_ASC:
         statement = statement.order_by(Expense.date.asc())  # type: ignore[attr-defined]
@@ -68,6 +93,29 @@ def list_expenses(
     statement = statement.offset(offset).limit(limit)
 
     return list(session.exec(statement).all())
+
+
+def count_expenses(
+    session: Session,
+    tracker_id: UUID,
+    *,
+    start_date: date_type | None = None,
+    end_date: date_type | None = None,
+    category_ids: list[UUID] | None = None,
+    expense_type: str | None = None,
+    search: str | None = None,
+) -> int:
+    """Count expenses matching the same filters as list_expenses (no paging)."""
+    statement = _apply_filters(
+        select(func.count()).select_from(Expense),
+        tracker_id,
+        start_date=start_date,
+        end_date=end_date,
+        category_ids=category_ids,
+        expense_type=expense_type,
+        search=search,
+    )
+    return session.exec(statement).one()
 
 
 def update_expense(

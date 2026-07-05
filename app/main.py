@@ -34,6 +34,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Custom response headers are hidden from browser JS unless listed here.
+    expose_headers=["X-Total-Count"],
 )
 
 # Setup rate limiting
