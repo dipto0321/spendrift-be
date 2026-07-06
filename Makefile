@@ -1,7 +1,7 @@
 ENV_FILE := .env
 PYTHON := python3
 
-.PHONY: help install dev test clean migrations run lint format
+.PHONY: help install dev test clean migrations run lint format sync-prod sync-prod-dry
 
 help:
 	@echo "Expense tracker app - Development Commands"
@@ -23,6 +23,11 @@ help:
 	@echo ""
 	@echo "Utilities:"
 	@echo "  make clean        Remove pycache and build files"
+	@echo ""
+	@echo "Database sync:"
+	@echo "  make sync-prod        Dump prod PG and restore into local Docker DB"
+	@echo "                       (requires PROD_URL; append ARGS='--keep-dump --jobs 8')"
+	@echo "  make sync-prod-dry    Preview sync-prod commands without running them"
 
 install:
 	uv sync --no-dev
@@ -61,3 +66,30 @@ clean:
 
 db-init:
 	uv run alembic current
+
+# ----------------------------------------------------------------------------
+# Database sync: prod -> local Docker
+#
+# Usage:
+#   make sync-prod PROD_URL='postgres://user:pass@host:5432/db'
+#   make sync-prod PROD_URL='postgres://user:pass@host:5432/db' ARGS='--keep-dump'
+#   make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+#
+# Local DB settings are read from .env (POSTGRES_DB/USER/PASSWORD).
+# The dump is written to /tmp and deleted after restore unless --keep-dump.
+# ----------------------------------------------------------------------------
+sync-prod:
+	@if [ -z "$(PROD_URL)" ]; then \
+		echo "ERROR: PROD_URL is required."; \
+		echo "  make sync-prod PROD_URL='postgres://user:pass@host:5432/db'"; \
+		exit 1; \
+	fi
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-prod.sh $(ARGS)
+
+sync-prod-dry:
+	@if [ -z "$(PROD_URL)" ]; then \
+		echo "ERROR: PROD_URL is required."; \
+		echo "  make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'"; \
+		exit 1; \
+	fi
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-prod.sh --dry-run $(ARGS)
