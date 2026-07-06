@@ -92,6 +92,8 @@ def _week_start(day: date_type) -> date_type:
 
 
 def _bucket_label(day: date_type, period: ReportPeriod) -> str:
+    if period == ReportPeriod.DAILY:
+        return day.isoformat()
     if period == ReportPeriod.WEEKLY:
         return _week_start(day).isoformat()
     if period == ReportPeriod.MONTHLY:
@@ -107,7 +109,7 @@ def get_spending_over_time(
     start_date: date_type | None = None,
     end_date: date_type | None = None,
 ) -> list[PeriodSpend]:
-    """Spending totals bucketed by week, month, or year, sorted ascending.
+    """Spending totals bucketed by day, week, month, or year, sorted ascending.
 
     Only buckets containing expenses are returned (matching the frontend
     groupBy* helpers).

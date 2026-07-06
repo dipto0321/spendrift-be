@@ -46,7 +46,7 @@ def get_spending_over_time(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
 ):
-    """Spending totals bucketed by week, month, or year."""
+    """Spending totals bucketed by day, week, month, or year."""
     return report_service.get_spending_over_time(
         session, tracker_id, current_user.id, period, start_date, end_date
     )
