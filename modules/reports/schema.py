@@ -12,6 +12,7 @@ from modules.dashboard.schema import NeedsWantsSplit  # noqa: F401  (re-exported
 class ReportPeriod(str, Enum):
     """Granularity for spending-over-time grouping."""
 
+    DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     YEARLY = "yearly"
@@ -30,8 +31,9 @@ class AnalyticsSummary(BaseModel):
 class PeriodSpend(BaseModel):
     """Spending total for one period bucket.
 
-    Label format depends on the period: weekly -> ISO date of the week's
-    Monday, monthly -> YYYY-MM, yearly -> YYYY.
+    Label format depends on the period: daily -> YYYY-MM-DD,
+    weekly -> ISO date of the week's Monday, monthly -> YYYY-MM,
+    yearly -> YYYY.
     """
 
     label: str

@@ -136,12 +136,26 @@ def test_spending_yearly_buckets(
     assert [b["label"] for b in body] == ["2025", "2026"]
 
 
+def test_spending_daily_buckets(
+    client: TestClient, tracker: Tracker, auth_headers, category_id
+):
+    _add_expense(client, tracker.id, auth_headers, category_id, "10.00", "2026-06-01")
+    _add_expense(client, tracker.id, auth_headers, category_id, "20.00", "2026-06-01")
+    _add_expense(client, tracker.id, auth_headers, category_id, "30.00", "2026-06-03")
+
+    body = _get(client, tracker.id, "spending", auth_headers, period="daily")
+    assert [b["label"] for b in body] == ["2026-06-01", "2026-06-03"]
+    assert Decimal(str(body[0]["total"])) == Decimal("30.00")
+    assert body[0]["count"] == 2
+    assert Decimal(str(body[1]["total"])) == Decimal("30.00")
+
+
 def test_spending_invalid_period_rejected(
     client: TestClient, tracker: Tracker, auth_headers
 ):
     response = client.get(
         _reports_url(tracker.id, "spending"),
-        params={"period": "daily"},
+        params={"period": "hourly"},
         headers=auth_headers,
     )
     assert response.status_code == 422
