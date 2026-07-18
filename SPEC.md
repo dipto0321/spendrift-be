@@ -14,7 +14,7 @@ multi-tracker personal finance API ! track expenses/budgets/categories per user,
 ## §I INTERFACES
 env (required): `SECRET_KEY`(≥32 chars), `DATABASE_URL`, `STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_BUCKET_NAME`
 
-env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
+env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `GEMINI_MODEL`=gemini-2.5-flash, `GEMINI_TIMEOUT_SECONDS`=30, `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
 
 - api.auth (prefix `/auth`):
   - POST /register → 201, issue token pair; 403 if !ALLOW_REGISTRATION; 400 dup email
@@ -34,6 +34,12 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
   - GET "" → lazily creates default row (budget_alerts_enabled=true, weekly_summary_enabled=true, round_amounts_enabled=false) if none exists yet
   - PUT "" → partial update, any subset of the 3 booleans
   - budget_alerts_enabled gates FE call to /budget-alerts, not enforced server-side
+
+- api.ai (prefix `/ai`, NOT tracker-scoped, stateless — no model/repo):
+  - POST /parse-expenses {text ≤4000, default_date, categories[{id,name}] ≤100} → {expenses[{amount, description, category_id|null, type, date}]} — candidate rows only, ⊥ persistence
+  - Gemini structured-output via `app/core/llm` (Protocol + `get_llm` dependency, mirrors storage pattern); model returns category NAME → service maps name→id (case-insens) ∴ hallucinated category ⊥ map to real UUID
+  - errors: no GEMINI_API_KEY → 503; provider fail/non-list payload → 502; 0 salvageable rows → 422
+  - rate limit 10/min/IP (own decorator, protects free-tier quota)
 
 - api.trackers (prefix `/trackers`):
   - GET/POST "" ; GET/PATCH/DELETE /{id}
@@ -80,6 +86,8 @@ V21: alembic/env.py ! import every SQLModel table module so target_metadata is c
 V22: user_preferences ! ≤1 row per user_id (UNIQUE constraint); GET lazily creates default row instead of 404
 V23: budget alert level thresholds fixed constants (WARNING_THRESHOLD=80, EXCEEDED_THRESHOLD=100), ⊥ magic numbers scattered in code
 V24: ∀ route ⊥ own rate-limit decorator → global default (60/min/IP) applies via SlowAPIMiddleware; sign-out excluded via @limiter.exempt, register/login/refresh excluded via their own decorator (⊥ stacked)
+V25: LLM output = untrusted input: ∀ parsed row coerced field-by-field (bad type→need, bad date→default_date, amount ⊥ >0 or no description → row dropped); ⊥ raw LLM json passed to client
+V26: /ai/parse-expenses ⊥ write DB — persistence only via normal /expenses endpoints after user review (FE V18 mirror)
 
 ## §T TASKS
 id|status|task|cites
@@ -98,6 +106,7 @@ T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
 T14|x|preferences module: user_preferences table + GET/PUT (gh#16)|V22,I.preferences
 T15|x|budget_alerts module: per-category threshold status (gh#17)|V23,I.budget_alerts
+T16|x|ai module: POST /ai/parse-expenses smart-paste parsing (Gemini via app/core/llm)|V25,V26,I.ai
 
 ## §B BUGS
 id|date|cause|fix

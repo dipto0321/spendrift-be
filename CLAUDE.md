@@ -25,6 +25,9 @@
 | Budgets    | ✅ Complete     |
 | Dashboard  | ✅ Complete     |
 | Reports    | ✅ Complete     |
+| AI         | ✅ Complete     |
+
+AI (smart-paste expense parsing) needs `GEMINI_API_KEY` set; without it the `/ai` endpoints answer 503.
 
 ---
 
