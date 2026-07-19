@@ -69,12 +69,51 @@ Interactive docs at `http://localhost:8000/docs`
 ## Key Commands
 
 ```bash
-make run          # Start API with hot reload (port 8000)
-make migrations   # Generate Alembic migration
-make upgrade      # Apply pending migrations
-make test         # Run test suite
-make lint         # ruff + mypy
+make run            # Start API with hot reload (port 8000)
+make migrations     # Generate Alembic migration (prompts for message)
+make upgrade        # Apply pending migrations
+make downgrade      # Roll back the most recent migration
+make db-status      # Print current Alembic revision
+make test           # Run pytest with coverage for app/ and modules/
+make lint           # ruff + mypy + (optional) shellcheck on scripts/
+make format         # ruff format + ruff check --fix
+make clean          # Remove __pycache__, .pytest_cache, .mypy_cache, htmlcov/
 ```
+
+### Database sync (prod <-> local Docker)
+
+These targets live behind the Makefile so the URL never lands on disk and the
+local DB credentials stay in `.env`. See [`docs/SCRIPTS_REVIEW.md`](docs/SCRIPTS_REVIEW.md)
+for a full audit of the scripts and their safety guarantees.
+
+```bash
+# Pull a fresh dump from prod into your local Docker DB (replace local fully)
+make sync-prod PROD_URL='postgres://user:pass@host:5432/db'
+
+# Preview without touching anything (dry run)
+make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+
+# Push only NEW rows from local Docker DB into prod (with backup)
+make push-prod PROD_URL='postgres://user:pass@host:5432/db'
+
+# Preview a push (dry run, no backup, no confirmation)
+make push-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+```
+
+Optional flags are forwarded via `ARGS='...'`:
+
+```bash
+make sync-prod     PROD_URL='...' ARGS='--keep-dump --jobs 8'
+make push-prod     PROD_URL='...' ARGS='--yes --exclude-tables=expenses'
+make push-prod-dry PROD_URL='...' ARGS='--tables=categories,trackers'
+```
+
+Safety features baked into `push-prod`:
+- Automatic prod backup before any insert (kept at `/tmp/fintrack-prod-backup-*.dump`)
+- Schema pre-check that aborts if local has columns prod doesn't
+- `ON CONFLICT DO NOTHING` — never overwrites existing rows
+- `refresh_tokens` and `alembic_version` are excluded by default
+- `--yes` flag for CI / non-interactive use
 
 ## Screenshots
 
@@ -189,6 +228,8 @@ backend/
 │   └── reports/          # Detailed reports
 ├── alembic/              # Database migrations
 ├── tests/                # Pytest suite
+├── scripts/              # Prod ↔ local DB sync (sync-prod.sh, push-to-prod.sh)
+├── docs/                 # ARCHITECTURE.md, SCRIPTS_REVIEW.md, screenshots/
 ├── docker-compose.yml
 ├── Makefile
 └── pyproject.toml

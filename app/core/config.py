@@ -30,9 +30,7 @@ class Settings(BaseSettings):
 
     # CORS - comma-separated list of allowed origins (no wildcard:
     # credentials are allowed, so origins must be explicit)
-    cors_origins: str = Field(
-        default="http://localhost:3000", alias="CORS_ORIGINS"
-    )
+    cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -45,6 +43,12 @@ class Settings(BaseSettings):
     storage_bucket_name: str = Field(alias="STORAGE_BUCKET_NAME")
     storage_presign_expiry: int = Field(default=86400, alias="STORAGE_PRESIGN_EXPIRY")
     storage_env: str = Field(default="dev", alias="STORAGE_ENV")
+
+    # AI (Gemini). Key is optional so the app boots without AI configured;
+    # the /ai endpoints answer 503 until it is set.
+    gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-flash-latest", alias="GEMINI_MODEL")
+    gemini_timeout_seconds: float = Field(default=30.0, alias="GEMINI_TIMEOUT_SECONDS")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
