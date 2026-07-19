@@ -14,7 +14,7 @@ multi-tracker personal finance API ! track expenses/budgets/categories per user,
 ## §I INTERFACES
 env (required): `SECRET_KEY`(≥32 chars), `DATABASE_URL`, `STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_BUCKET_NAME`
 
-env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `GEMINI_MODEL`=gemini-2.5-flash, `GEMINI_TIMEOUT_SECONDS`=30, `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
+env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `GEMINI_MODEL`=gemini-flash-latest (rolling alias; pinned versions get retired for new keys), `GEMINI_TIMEOUT_SECONDS`=30, `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
 
 - api.auth (prefix `/auth`):
   - POST /register → 201, issue token pair; 403 if !ALLOW_REGISTRATION; 400 dup email
@@ -88,6 +88,7 @@ V23: budget alert level thresholds fixed constants (WARNING_THRESHOLD=80, EXCEED
 V24: ∀ route ⊥ own rate-limit decorator → global default (60/min/IP) applies via SlowAPIMiddleware; sign-out excluded via @limiter.exempt, register/login/refresh excluded via their own decorator (⊥ stacked)
 V25: LLM output = untrusted input: ∀ parsed row coerced field-by-field (bad type→need, bad date→default_date, amount ⊥ >0 or no description → row dropped); ⊥ raw LLM json passed to client
 V26: /ai/parse-expenses ⊥ write DB — persistence only via normal /expenses endpoints after user review (FE V18 mirror)
+V27: GEMINI_MODEL ! rolling alias (gemini-flash-latest) ⊥ pinned version — Google retires pinned models for new API keys (see B2)
 
 ## §T TASKS
 id|status|task|cites
@@ -111,3 +112,4 @@ T16|x|ai module: POST /ai/parse-expenses smart-paste parsing (Gemini via app/cor
 ## §B BUGS
 id|date|cause|fix
 B1|2026-07-05|alembic/env.py missed importing Budget model ∴ target_metadata ⊥ know budgets table exists ∴ autogenerate would propose DROP TABLE budgets|added missing import (+ CategoryBudget). §V21
+B2|2026-07-19|default GEMINI_MODEL pinned gemini-2.5-flash; Google retired it for new API keys → generateContent 404 → FE saw 502 on first real smart-paste|switched default/.env/.env.example to gemini-flash-latest rolling alias. §V27

@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # AI (Gemini). Key is optional so the app boots without AI configured;
     # the /ai endpoints answer 503 until it is set.
     gemini_api_key: str | None = Field(default=None, alias="GEMINI_API_KEY")
-    gemini_model: str = Field(default="gemini-2.5-flash", alias="GEMINI_MODEL")
+    gemini_model: str = Field(default="gemini-flash-latest", alias="GEMINI_MODEL")
     gemini_timeout_seconds: float = Field(default=30.0, alias="GEMINI_TIMEOUT_SECONDS")
 
     # Logging
