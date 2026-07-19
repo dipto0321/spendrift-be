@@ -1,9 +1,12 @@
 """AI routes (smart-paste expense parsing)."""
 
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from sqlmodel import Session
 
+from app.core.database import get_session
 from app.core.llm import get_llm
 from app.core.llm.base import LLMClient
 from app.core.security import get_current_user
@@ -12,7 +15,7 @@ from modules.ai import service as ai_service
 from modules.ai.schema import ParseExpensesRequest, ParseExpensesResponse
 from modules.users.model import User
 
-router = APIRouter()
+router = APIRouter(prefix="/trackers/{tracker_id}/ai", tags=["AI"])
 
 
 @router.post("/parse-expenses", response_model=ParseExpensesResponse)
@@ -21,8 +24,10 @@ router = APIRouter()
 @limiter.limit("10/minute")
 def parse_expenses(
     request: Request,  # required by slowapi's limiter
+    tracker_id: UUID,
     payload: ParseExpensesRequest,
+    session: Annotated[Session, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],
     llm: Annotated[LLMClient, Depends(get_llm)],
-) -> ParseExpensesResponse:
-    return ai_service.parse_expenses(llm, payload)
+):
+    return ai_service.parse_expenses(session, llm, tracker_id, current_user.id, payload)

@@ -1,8 +1,9 @@
 """Tests for the AI module (smart-paste expense parsing).
 
 The LLM call is stubbed via the `get_llm` dependency override, so these
-tests exercise request validation, prompt-output salvage rules, category
-name→id mapping, and error mapping — never a real Gemini call.
+tests exercise ownership, prompt-output salvage rules, category name→id
+mapping (against the tracker's seeded categories), and error mapping —
+never a real Gemini call.
 """
 
 from collections.abc import Generator
@@ -15,8 +16,11 @@ from fastapi.testclient import TestClient
 from app.core.llm import get_llm
 from app.core.llm.base import LLMError, LLMNotConfiguredError
 from app.main import app
+from modules.trackers.model import Tracker
 
-_URL = "/api/v1/ai/parse-expenses"
+
+def _url(tracker_id: Any) -> str:
+    return f"/api/v1/trackers/{tracker_id}/ai/parse-expenses"
 
 
 class _StubLLM:
@@ -50,31 +54,42 @@ def _request_body(**overrides: Any) -> dict[str, Any]:
     body: dict[str, Any] = {
         "text": "coffee 120, bus 40",
         "default_date": "2026-07-18",
-        "categories": [
-            {"id": str(uuid4()), "name": "Coffee"},
-            {"id": str(uuid4()), "name": "Transport"},
-        ],
     }
     body.update(overrides)
     return body
 
 
-def test_parse_requires_auth(client: TestClient, stub_llm: _StubLLM):
-    response = client.post(_URL, json=_request_body())
+def _category_id_by_name(
+    client: TestClient, auth_headers: dict[str, str], tracker: Tracker, name: str
+) -> str:
+    categories = client.get(
+        f"/api/v1/trackers/{tracker.id}/categories", headers=auth_headers
+    ).json()
+    return next(c["id"] for c in categories if c["name"] == name)
+
+
+def test_parse_requires_auth(client: TestClient, tracker: Tracker, stub_llm: _StubLLM):
+    response = client.post(_url(tracker.id), json=_request_body())
     assert response.status_code == 401
 
 
-def test_parse_happy_path_maps_categories_and_money(
+def test_parse_unknown_tracker_is_404(
     client: TestClient, auth_headers, stub_llm: _StubLLM
 ):
-    body = _request_body()
-    coffee_id = body["categories"][0]["id"]
+    response = client.post(_url(uuid4()), json=_request_body(), headers=auth_headers)
+    assert response.status_code == 404
+
+
+def test_parse_happy_path_maps_seeded_categories_and_money(
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
+):
+    groceries_id = _category_id_by_name(client, auth_headers, tracker, "Groceries")
     stub_llm.payload = [
         {
             "amount": "120.50",
-            "description": "coffee",
-            "category": "Coffee",
-            "type": "want",
+            "description": "bigbazar items",
+            "category": "Groceries",
+            "type": "need",
             "date": "2026-07-18",
         },
         {
@@ -86,16 +101,16 @@ def test_parse_happy_path_maps_categories_and_money(
         },
     ]
 
-    response = client.post(_URL, json=body, headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 200, response.text
     expenses = response.json()["expenses"]
     assert len(expenses) == 2
 
     first, second = expenses
-    # Money stays a decimal string on the wire, category name mapped to id.
+    # Money stays a decimal string on the wire; the category name the model
+    # returned is mapped to the tracker's real category id server-side.
     assert first["amount"] == "120.50"
-    assert first["category_id"] == coffee_id
-    assert first["type"] == "want"
+    assert first["category_id"] == groceries_id
     assert first["date"] == "2026-07-18"
     # Unmapped category comes back as null for the review grid to resolve.
     assert second["category_id"] is None
@@ -103,10 +118,9 @@ def test_parse_happy_path_maps_categories_and_money(
 
 
 def test_parse_maps_category_names_case_insensitively(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
-    body = _request_body()
-    transport_id = body["categories"][1]["id"]
+    transport_id = _category_id_by_name(client, auth_headers, tracker, "Transport")
     stub_llm.payload = [
         {
             "amount": "40",
@@ -117,13 +131,13 @@ def test_parse_maps_category_names_case_insensitively(
         }
     ]
 
-    response = client.post(_URL, json=body, headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["expenses"][0]["category_id"] == transport_id
 
 
-def test_parse_unknown_category_name_becomes_null(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+def test_parse_hallucinated_category_name_becomes_null(
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = [
         {
@@ -135,13 +149,13 @@ def test_parse_unknown_category_name_becomes_null(
         }
     ]
 
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 200
     assert response.json()["expenses"][0]["category_id"] is None
 
 
 def test_parse_salvages_bad_dates_and_types(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = [
         {
@@ -153,7 +167,7 @@ def test_parse_salvages_bad_dates_and_types(
         }
     ]
 
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 200
     row = response.json()["expenses"][0]
     assert row["type"] == "need"
@@ -161,7 +175,7 @@ def test_parse_salvages_bad_dates_and_types(
 
 
 def test_parse_drops_unsalvageable_rows(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = [
         {
@@ -187,7 +201,7 @@ def test_parse_drops_unsalvageable_rows(
         },
     ]
 
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 200
     expenses = response.json()["expenses"]
     assert len(expenses) == 1
@@ -195,44 +209,48 @@ def test_parse_drops_unsalvageable_rows(
 
 
 def test_parse_nothing_usable_is_422(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = []
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 422
 
 
 def test_parse_non_list_llm_payload_is_502(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = {"unexpected": "shape"}
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 502
 
 
-def test_parse_empty_text_is_422(client: TestClient, auth_headers, stub_llm: _StubLLM):
-    response = client.post(_URL, json=_request_body(text=""), headers=auth_headers)
+def test_parse_empty_text_is_422(
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
+):
+    response = client.post(
+        _url(tracker.id), json=_request_body(text=""), headers=auth_headers
+    )
     assert response.status_code == 422
 
 
 def test_parse_provider_failure_is_502(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.error = LLMError("gemini exploded")
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 502
 
 
 def test_parse_missing_api_key_is_503(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.error = LLMNotConfiguredError("GEMINI_API_KEY not set")
-    response = client.post(_URL, json=_request_body(), headers=auth_headers)
+    response = client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert response.status_code == 503
 
 
-def test_prompt_includes_categories_and_default_date(
-    client: TestClient, auth_headers, stub_llm: _StubLLM
+def test_prompt_includes_tracker_categories_and_default_date(
+    client: TestClient, auth_headers, tracker: Tracker, stub_llm: _StubLLM
 ):
     stub_llm.payload = [
         {
@@ -243,10 +261,11 @@ def test_prompt_includes_categories_and_default_date(
             "date": "2026-07-18",
         }
     ]
-    client.post(_URL, json=_request_body(), headers=auth_headers)
+    client.post(_url(tracker.id), json=_request_body(), headers=auth_headers)
     assert len(stub_llm.prompts) == 1
     prompt = stub_llm.prompts[0]
-    assert "Coffee" in prompt
+    # Category names come from the tracker's seeded categories, not the body.
+    assert "Groceries" in prompt
     assert "Transport" in prompt
     assert "2026-07-18" in prompt
     assert "coffee 120, bus 40" in prompt

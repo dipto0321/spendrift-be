@@ -14,19 +14,11 @@ from pydantic import BaseModel, Field
 from modules.expenses.schema import ExpenseType
 
 
-class CategoryRef(BaseModel):
-    """A category the model may map a parsed row onto."""
-
-    id: UUID
-    name: str = Field(min_length=1, max_length=100)
-
-
 class ParseExpensesRequest(BaseModel):
-    """Free text plus the context the model needs to produce rows."""
+    """Free text to parse. Categories come from the tracker, not the client."""
 
     text: str = Field(min_length=1, max_length=4000)
     default_date: date_type
-    categories: list[CategoryRef] = Field(default_factory=list, max_length=100)
 
 
 class ParsedExpense(BaseModel):

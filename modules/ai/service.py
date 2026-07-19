@@ -14,6 +14,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from sqlmodel import Session
 
 from app.core.llm.base import LLMClient, LLMError, LLMNotConfiguredError
 from modules.ai.schema import (
@@ -21,7 +22,9 @@ from modules.ai.schema import (
     ParseExpensesRequest,
     ParseExpensesResponse,
 )
+from modules.categories import repo as category_repo
 from modules.expenses.schema import ExpenseType
+from modules.trackers import service as tracker_service
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +68,8 @@ Text:
 """
 
 
-def _build_prompt(payload: ParseExpensesRequest) -> str:
-    names = ", ".join(c.name for c in payload.categories) or "(no categories)"
+def _build_prompt(payload: ParseExpensesRequest, category_names: list[str]) -> str:
+    names = ", ".join(category_names) or "(no categories)"
     return _PROMPT_TEMPLATE.format(
         category_names=names,
         default_date=payload.default_date.isoformat(),
@@ -120,11 +123,26 @@ def _salvage_row(
 
 
 def parse_expenses(
-    llm: LLMClient, payload: ParseExpensesRequest
+    session: Session,
+    llm: LLMClient,
+    tracker_id: UUID,
+    user_id: UUID,
+    payload: ParseExpensesRequest,
 ) -> ParseExpensesResponse:
-    """Ask the LLM for candidate rows and salvage its output."""
+    """Ask the LLM for candidate rows and salvage its output.
+
+    Categories are loaded from the tracker (single source of truth) rather
+    than shipped by the client, so new/renamed categories are picked up on
+    the next request with no cache to refresh.
+    """
+    tracker_service.get_tracker_or_404(session, tracker_id, user_id)
+    categories = category_repo.list_categories_by_tracker(session, tracker_id)
+
     try:
-        raw = llm.generate_structured(_build_prompt(payload), _RESPONSE_SCHEMA)
+        raw = llm.generate_structured(
+            _build_prompt(payload, [c.name for c in categories]),
+            _RESPONSE_SCHEMA,
+        )
     except LLMNotConfiguredError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -143,7 +161,7 @@ def parse_expenses(
             detail="The AI provider returned an unexpected response",
         )
 
-    category_ids_by_name = {c.name.strip().lower(): c.id for c in payload.categories}
+    category_ids_by_name = {c.name.strip().lower(): c.id for c in categories}
     expenses = [
         parsed
         for row in raw

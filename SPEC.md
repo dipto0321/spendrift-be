@@ -35,8 +35,9 @@ env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `G
   - PUT "" → partial update, any subset of the 3 booleans
   - budget_alerts_enabled gates FE call to /budget-alerts, not enforced server-side
 
-- api.ai (prefix `/ai`, NOT tracker-scoped, stateless — no model/repo):
-  - POST /parse-expenses {text ≤4000, default_date, categories[{id,name}] ≤100} → {expenses[{amount, description, category_id|null, type, date}]} — candidate rows only, ⊥ persistence
+- api.ai (`/trackers/{tracker_id}/ai`, stateless — no model/repo):
+  - POST /parse-expenses {text ≤4000, default_date} → {expenses[{amount, description, category_id|null, type, date}]} — candidate rows only, ⊥ persistence
+  - categories loaded server-side from tracker (DB = source of truth ∴ new/renamed categories auto-fresh, ⊥ client ships list, ⊥ LLM context cache needed); ownership via get_tracker_or_404 (V1)
   - Gemini structured-output via `app/core/llm` (Protocol + `get_llm` dependency, mirrors storage pattern); model returns category NAME → service maps name→id (case-insens) ∴ hallucinated category ⊥ map to real UUID
   - errors: no GEMINI_API_KEY → 503; provider fail/non-list payload → 502; 0 salvageable rows → 422
   - rate limit 10/min/IP (own decorator, protects free-tier quota)

@@ -31,4 +31,4 @@ api_router.include_router(reports_router)
 api_router.include_router(
     preferences_router, prefix="/preferences", tags=["Preferences"]
 )
-api_router.include_router(ai_router, prefix="/ai", tags=["AI"])
+api_router.include_router(ai_router)
