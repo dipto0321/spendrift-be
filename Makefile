@@ -1,7 +1,7 @@
 ENV_FILE := .env
 PYTHON := python3
 
-.PHONY: help install dev test clean migrations run lint format sync-prod sync-prod-dry
+.PHONY: help install dev test clean migrations run lint format sync-prod sync-prod-dry push-prod push-prod-dry
 
 help:
 	@echo "Expense tracker app - Development Commands"
@@ -28,6 +28,9 @@ help:
 	@echo "  make sync-prod        Dump prod PG and restore into local Docker DB"
 	@echo "                       (requires PROD_URL; append ARGS='--keep-dump --jobs 8')"
 	@echo "  make sync-prod-dry    Preview sync-prod commands without running them"
+	@echo "  make push-prod        Push local Docker DB to prod (new rows only)"
+	@echo "                       (requires PROD_URL; append ARGS='--dry-run --skip-backup')"
+	@echo "  make push-prod-dry    Preview push-prod without touching prod"
 
 install:
 	uv sync --no-dev
@@ -93,3 +96,31 @@ sync-prod-dry:
 		exit 1; \
 	fi
 	@PROD_URL='$(PROD_URL)' ./scripts/sync-prod.sh --dry-run $(ARGS)
+
+# ----------------------------------------------------------------------------
+# Database sync: local Docker -> prod (new rows only)
+#
+# Usage:
+#   make push-prod PROD_URL='postgres://user:pass@host:5432/db'
+#   make push-prod PROD_URL='postgres://user:pass@host:5432/db' ARGS='--dry-run'
+#   make push-prod PROD_URL='postgres://user:pass@host:5432/db' ARGS='--tables=expenses,categories'
+#   make push-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+#
+# Safety: Backs up prod before changes. Uses ON CONFLICT DO NOTHING.
+# Only NEW rows are inserted — existing prod data is never modified or deleted.
+# ----------------------------------------------------------------------------
+push-prod:
+	@if [ -z "$(PROD_URL)" ]; then \
+		echo "ERROR: PROD_URL is required."; \
+		echo "  make push-prod PROD_URL='postgres://user:pass@host:5432/db'"; \
+		exit 1; \
+	fi
+	@PROD_URL='$(PROD_URL)' ./scripts/push-to-prod.sh $(ARGS)
+
+push-prod-dry:
+	@if [ -z "$(PROD_URL)" ]; then \
+		echo "ERROR: PROD_URL is required."; \
+		echo "  make push-prod-dry PROD_URL='postgres://user:pass@host:5432/db'"; \
+		exit 1; \
+	fi
+	@PROD_URL='$(PROD_URL)' ./scripts/push-to-prod.sh --dry-run $(ARGS)
