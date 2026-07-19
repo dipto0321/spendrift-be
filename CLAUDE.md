@@ -278,11 +278,41 @@ api_router.include_router(trackers_router)
 ```bash
 docker-compose up        # Start PostgreSQL
 make run                 # Start API (port 8000, hot reload)
-make migrations          # Generate Alembic migration
+make migrations          # Generate Alembic migration (interactive message)
 make upgrade             # Apply migrations
-make test                # Run pytest
-make lint                # ruff + mypy
+make downgrade           # Roll back the most recent migration
+make db-status           # Print current Alembic revision
+make test                # Run pytest with coverage for app/ and modules/
+make lint                # ruff + mypy + (optional) shellcheck on scripts/
+make format              # ruff format + ruff check --fix
+make clean               # Remove __pycache__, htmlcov/, .pytest_cache, .mypy_cache
 ```
+
+## Database Sync Scripts
+
+The `scripts/` directory holds two production-safety scripts. They are
+intentionally bypassed by `.gitignore`'s `*.dump` rule (dumps stay in `/tmp`).
+
+**`scripts/sync-prod.sh`** — dumps prod and replaces local Docker DB.
+- Flags: `--keep-dump`, `--jobs N`, `--dry-run`
+- Uses `PGPASSWORD` env var so the password never appears in argv
+- Has explicit preflight checks for `pg_dump`/`pg_restore`/`psql` and local DB connectivity
+- Defaults to `backend-db-1` container; override with `LOCAL_CONTAINER=...`
+
+**`scripts/push-to-prod.sh`** — pushes NEW rows from local Docker DB to prod.
+- Flags: `--dry-run`, `--skip-backup`, `--yes`, `--tables t1,t2`, `--exclude-tables t1,t2`, `--force`
+- Schema pre-check aborts the push if local has columns that prod doesn't
+- Timezone-safe comparisons (`AT TIME ZONE 'UTC'`)
+- `ON_ERROR_STOP=1` with full psql log written to `/tmp/fintrack-push-*.log`
+- `refresh_tokens` and `alembic_version` are excluded by default
+- Production backup kept at `/tmp/fintrack-prod-backup-*.dump`
+
+Always run `make <target>-dry` first to preview. See
+[`docs/SCRIPTS_REVIEW.md`](docs/SCRIPTS_REVIEW.md) for the full audit log
+and rationale behind the safety guarantees.
+
+The Makefile wires these as `make sync-prod`, `make push-prod`, etc., so the
+prod URL stays on the command line and never lands on disk.
 
 ---
 
