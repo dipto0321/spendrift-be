@@ -25,6 +25,9 @@
 | Budgets    | ✅ Complete     |
 | Dashboard  | ✅ Complete     |
 | Reports    | ✅ Complete     |
+| AI         | ✅ Complete     |
+
+AI (smart-paste expense parsing) needs `GEMINI_API_KEY` set; without it the `/ai` endpoints answer 503.
 
 ---
 
@@ -275,10 +278,14 @@ api_router.include_router(trackers_router)
 ```bash
 docker-compose up        # Start PostgreSQL
 make run                 # Start API (port 8000, hot reload)
-make migrations          # Generate Alembic migration
+make migrations          # Generate Alembic migration (interactive message)
 make upgrade             # Apply migrations
-make test                # Run pytest
-make lint                # ruff + mypy
+make downgrade           # Roll back the most recent migration
+make db-status           # Print current Alembic revision
+make test                # Run pytest with coverage for app/ and modules/
+make lint                # ruff + mypy + (optional) shellcheck on scripts/
+make format              # ruff format + ruff check --fix
+make clean               # Remove __pycache__, htmlcov/, .pytest_cache, .mypy_cache
 ```
 
 ### Bidirectional DB Sync
@@ -294,7 +301,8 @@ Syncs tables with `updated_at` columns (`users`, `trackers`, `categories`,
 `expenses`, `budgets`, `category_budgets`, `user_preferences`) bidirectionally.
 Backs up BOTH DBs to `/tmp` before any mutation and restores them on failure.
 Deletes are never propagated (INSERT-only). Conflict policy: latest
-`updated_at` wins.
+`updated_at` wins. `PROD_URL` stays on the command line and never lands on
+disk. This replaces the old one-way `sync-prod.sh` / `push-to-prod.sh` scripts.
 
 ---
 

@@ -69,12 +69,51 @@ Interactive docs at `http://localhost:8000/docs`
 ## Key Commands
 
 ```bash
-make run          # Start API with hot reload (port 8000)
-make migrations   # Generate Alembic migration
-make upgrade      # Apply pending migrations
-make test         # Run test suite
-make lint         # ruff + mypy
+make run            # Start API with hot reload (port 8000)
+make migrations     # Generate Alembic migration (prompts for message)
+make upgrade        # Apply pending migrations
+make downgrade      # Roll back the most recent migration
+make db-status      # Print current Alembic revision
+make test           # Run pytest with coverage for app/ and modules/
+make lint           # ruff + mypy + (optional) shellcheck on scripts/
+make format         # ruff format + ruff check --fix
+make clean          # Remove __pycache__, .pytest_cache, .mypy_cache, htmlcov/
 ```
+
+### Database sync (prod <-> local Docker)
+
+Bidirectional, incremental, rollback-safe sync between the local Docker DB and
+prod. These targets live behind the Makefile so the prod URL never lands on
+disk and the local DB credentials stay in `.env`.
+
+```bash
+# Sync both directions (newer updated_at wins, INSERT-only, no deletes)
+make sync-db PROD_URL='postgres://user:pass@host:5432/db'
+
+# Preview without writing anything (dry run)
+make sync-db-dry PROD_URL='postgres://user:pass@host:5432/db'
+
+# Show per-table sync watermarks on both sides
+make sync-db-status PROD_URL='postgres://user:pass@host:5432/db'
+
+# Reset watermarks to epoch (next run scans fully)
+make sync-db-reset PROD_URL='postgres://user:pass@host:5432/db'
+```
+
+Optional flags are forwarded via `ARGS='...'`:
+
+```bash
+make sync-db PROD_URL='...' ARGS='--keep-dump --jobs 8 --verbose'
+make sync-db PROD_URL='...' ARGS='--table expenses'
+```
+
+Safety features baked into `sync-db`:
+
+- Refuses to run unless both DBs are on the same Alembic revision
+- Backs up BOTH DBs to `/tmp` before any mutation; auto-restores on failure
+- Deletes are never propagated (INSERT-only); conflicts resolve to the latest `updated_at`
+- Idempotent and resumable via the `sync_state` watermark table
+- Isolated test harness: `make sync-db-test-up` / `sync-db-test-sync` / `sync-db-test-drop` (throwaway Postgres on port 5433)
 
 ## Screenshots
 
@@ -189,6 +228,8 @@ backend/
 │   └── reports/          # Detailed reports
 ├── alembic/              # Database migrations
 ├── tests/                # Pytest suite
+├── scripts/              # Prod ↔ local bidirectional DB sync (sync-db.sh, sync_db.py)
+├── docs/                 # ARCHITECTURE.md, SCRIPTS_REVIEW.md, screenshots/
 ├── docker-compose.yml
 ├── Makefile
 └── pyproject.toml

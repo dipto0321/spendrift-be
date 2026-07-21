@@ -1,28 +1,31 @@
-ENV_FILE := .env
-PYTHON := python3
+# Abort on first error in every recipe and print the failing command.
+# Combined with `set -e` in the shell scripts, this guarantees we never
+# silently skip a failed step (e.g. a half-applied migration).
+.SHELLFLAGS := -ec
 
-.PHONY: help install dev test clean migrations run lint format sync-db sync-db-dry sync-db-status sync-db-reset sync-db-test-up sync-db-test-down sync-db-test-sync sync-db-test-drop
+.PHONY: help install dev test clean migrations upgrade downgrade run lint format db-status sync-db sync-db-dry sync-db-status sync-db-reset sync-db-test-up sync-db-test-sync sync-db-test-drop
 
 help:
-	@echo "Expense tracker app - Development Commands"
+	@echo "Spendrift backend — development commands"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make install       Install dependencies"
-	@echo "  make dev          Install dev dependencies"
+	@echo "  make install       Install runtime dependencies"
+	@echo "  make dev           Install runtime + dev dependencies"
 	@echo ""
 	@echo "Database:"
-	@echo "  make migrations   Create new migration"
-	@echo "  make upgrade      Run migrations (upgrade to head)"
-	@echo "  make downgrade    Rollback last migration"
+	@echo "  make migrations    Create a new Alembic migration (prompts for message)"
+	@echo "  make upgrade       Apply all pending migrations (alembic upgrade head)"
+	@echo "  make downgrade     Roll back the most recent migration"
+	@echo "  make db-status     Print the current Alembic revision"
 	@echo ""
 	@echo "Development:"
-	@echo "  make run          Run dev server"
-	@echo "  make test         Run test suite"
-	@echo "  make lint         Run linters (ruff, mypy)"
-	@echo "  make format       Format code (black, ruff)"
+	@echo "  make run           Run dev server (uvicorn + hot reload, port 8000)"
+	@echo "  make test          Run pytest with coverage for app/ and modules/"
+	@echo "  make lint          ruff + mypy + (optional) shellcheck on scripts/"
+	@echo "  make format        ruff format + ruff check --fix"
 	@echo ""
 	@echo "Utilities:"
-	@echo "  make clean        Remove pycache and build files"
+	@echo "  make clean         Remove pycache, build artefacts, htmlcov/"
 	@echo ""
 	@echo "Database sync (bidirectional, incremental, rollback-safe):"
 	@echo "  make sync-db          Sync local Docker DB <-> prod (requires PROD_URL)"
@@ -43,7 +46,14 @@ dev:
 	uv sync
 
 migrations:
-	@read -p "Enter migration message: " msg; \
+	@if ! read -p "Enter migration message: " msg; then \
+		echo "Aborted (no input)."; \
+		exit 1; \
+	fi; \
+	if [[ -z "$$msg" ]]; then \
+		echo "ERROR: migration message cannot be empty."; \
+		exit 1; \
+	fi; \
 	uv run alembic revision --autogenerate -m "$$msg"
 
 upgrade:
@@ -52,27 +62,39 @@ upgrade:
 downgrade:
 	uv run alembic downgrade -1
 
+db-status:
+	uv run alembic current
+
 run:
 	uv run fastapi dev app/main.py --host 0.0.0.0 --port 8000 --reload
 
 test:
-	uv run pytest -v --cov=. --cov-report=html
+	uv run pytest -v --cov=app --cov=modules --cov-report=html --cov-report=term-missing
 
 lint:
 	uv run ruff check app modules tests
 	uv run mypy app modules
+	@if command -v shellcheck >/dev/null 2>&1; then \
+		shellcheck scripts/*.sh; \
+	else \
+		echo "shellcheck not installed — skipping shell script lint (brew install shellcheck)"; \
+	fi
 
 format:
 	uv run ruff format .
 	uv run ruff check . --fix
 
 clean:
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete
-	rm -rf .pytest_cache .mypy_cache .ruff_cache build dist *.egg-info
-
-db-init:
-	uv run alembic current
+	@find . -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache -o -name .ruff_cache \) \
+		-not -path './.git/*' \
+		-not -path './.venv/*' \
+		-not -path './node_modules/*' \
+		-exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name "*.pyc" \
+		-not -path './.git/*' \
+		-not -path './.venv/*' \
+		-delete 2>/dev/null || true
+	rm -rf build dist htmlcov *.egg-info 2>/dev/null || true
 
 # ----------------------------------------------------------------------------
 # Bidirectional DB sync: local Docker <-> prod

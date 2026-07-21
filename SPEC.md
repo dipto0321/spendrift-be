@@ -14,7 +14,7 @@ multi-tracker personal finance API ! track expenses/budgets/categories per user,
 ## §I INTERFACES
 env (required): `SECRET_KEY`(≥32 chars), `DATABASE_URL`, `STORAGE_ENDPOINT_URL`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_BUCKET_NAME`
 
-env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
+env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `GEMINI_MODEL`=gemini-flash-latest (rolling alias; pinned versions get retired for new keys), `GEMINI_TIMEOUT_SECONDS`=30, `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `REFRESH_TOKEN_EXPIRE_DAYS`=7, `API_V1_STR`=/api/v1, `DEBUG`=False, `ALLOW_REGISTRATION`=True, `CORS_ORIGINS`=http://localhost:3000, `STORAGE_PRESIGN_EXPIRY`=86400, `STORAGE_ENV`=dev, `LOG_LEVEL`=INFO, `LOG_FORMAT`=json
 
 - api.auth (prefix `/auth`):
   - POST /register → 201, issue token pair; 403 if !ALLOW_REGISTRATION; 400 dup email
@@ -34,6 +34,13 @@ env (optional, defaults): `ALGORITHM`=HS256, `ACCESS_TOKEN_EXPIRE_MINUTES`=30, `
   - GET "" → lazily creates default row (budget_alerts_enabled=true, weekly_summary_enabled=true, round_amounts_enabled=false) if none exists yet
   - PUT "" → partial update, any subset of the 3 booleans
   - budget_alerts_enabled gates FE call to /budget-alerts, not enforced server-side
+
+- api.ai (`/trackers/{tracker_id}/ai`, stateless — no model/repo):
+  - POST /parse-expenses {text ≤4000, default_date} → {expenses[{amount, description, category_id|null, type, date}]} — candidate rows only, ⊥ persistence
+  - categories loaded server-side from tracker (DB = source of truth ∴ new/renamed categories auto-fresh, ⊥ client ships list, ⊥ LLM context cache needed); ownership via get_tracker_or_404 (V1)
+  - Gemini structured-output via `app/core/llm` (Protocol + `get_llm` dependency, mirrors storage pattern); model returns category NAME → service maps name→id (case-insens) ∴ hallucinated category ⊥ map to real UUID
+  - errors: no GEMINI_API_KEY → 503; provider fail/non-list payload → 502; 0 salvageable rows → 422
+  - rate limit 10/min/IP (own decorator, protects free-tier quota)
 
 - api.trackers (prefix `/trackers`):
   - GET/POST "" ; GET/PATCH/DELETE /{id}
@@ -80,6 +87,9 @@ V21: alembic/env.py ! import every SQLModel table module so target_metadata is c
 V22: user_preferences ! ≤1 row per user_id (UNIQUE constraint); GET lazily creates default row instead of 404
 V23: budget alert level thresholds fixed constants (WARNING_THRESHOLD=80, EXCEEDED_THRESHOLD=100), ⊥ magic numbers scattered in code
 V24: ∀ route ⊥ own rate-limit decorator → global default (60/min/IP) applies via SlowAPIMiddleware; sign-out excluded via @limiter.exempt, register/login/refresh excluded via their own decorator (⊥ stacked)
+V25: LLM output = untrusted input: ∀ parsed row coerced field-by-field (bad type→need, bad date→default_date, amount ⊥ >0 or no description → row dropped); ⊥ raw LLM json passed to client
+V26: /ai/parse-expenses ⊥ write DB — persistence only via normal /expenses endpoints after user review (FE V18 mirror)
+V27: GEMINI_MODEL ! rolling alias (gemini-flash-latest) ⊥ pinned version — Google retires pinned models for new API keys (see B2)
 
 ## §T TASKS
 id|status|task|cites
@@ -98,7 +108,12 @@ T12|x|X-Total-Count header on expenses list (gh#6)|I.expenses
 T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.category_budgets
 T14|x|preferences module: user_preferences table + GET/PUT (gh#16)|V22,I.preferences
 T15|x|budget_alerts module: per-category threshold status (gh#17)|V23,I.budget_alerts
+T16|x|ai module: POST /ai/parse-expenses smart-paste parsing (Gemini via app/core/llm)|V25,V26,I.ai
 
 ## §B BUGS
 id|date|cause|fix
 B1|2026-07-05|alembic/env.py missed importing Budget model ∴ target_metadata ⊥ know budgets table exists ∴ autogenerate would propose DROP TABLE budgets|added missing import (+ CategoryBudget). §V21
+B2|2026-07-19|default GEMINI_MODEL pinned gemini-2.5-flash; Google retired it for new API keys → generateContent 404 → FE saw 502 on first real smart-paste|switched default/.env/.env.example to gemini-flash-latest rolling alias. §V27
+B3|2026-07-19|scripts/push-to-prod.sh: `psql ... -v ON_ERROR_STOP=0 | tail -20` silently swallowed failed INSERTs, and `2>/dev/null || echo "0"` coerced query errors to "0 rows" — both hid data-loss conditions|swapped to `ON_ERROR_STOP=1` with full psql log + tail; errors now surface loudly. Added schema pre-check (information_schema.columns), timezone-safe timestamps via `AT TIME ZONE 'UTC'`, `PGPASSWORD` env var (no password in argv), `--yes` / `--exclude-tables` flags, refresh_tokens+alembic_version default-excluded, and a `cleanup_tmp` EXIT trap. See `docs/SCRIPTS_REVIEW.md` for full audit.
+B4|2026-07-19|Makefile: `db-init` target ran `alembic current` (only reports revision); misleadingly named and not in `.PHONY`|renamed to `db-status`, added to `.PHONY`. Also added `.SHELLFLAGS := -ec` for strict-mode recipes, scoped `make test` coverage to `app/ modules/` (matches `pyproject.toml`), removed unused `ENV_FILE`/`PYTHON` vars, expanded `clean` to remove `htmlcov/`, added optional `shellcheck scripts/*.sh` to `make lint`.
+B5|2026-07-19|scripts/sync-prod.sh: regex-based `PROD_URL` parsing broke on URL-encoded passwords and IPv6 hosts; `--jobs` accepted non-numeric values; no `pg_restore`/`psql` preflight; `LOCAL_URL` embedded password in argv|replaced URL parsing with `python3 -c urllib.parse`, validated `--jobs` as integer, added preflight checks, switched all DB connections to `PGPASSWORD` env var, added explicit `pg_restore` failure path that points at the preserved dump. See `docs/SCRIPTS_REVIEW.md`.
