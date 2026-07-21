@@ -1,7 +1,7 @@
 ENV_FILE := .env
 PYTHON := python3
 
-.PHONY: help install dev test clean migrations run lint format sync-prod sync-prod-dry
+.PHONY: help install dev test clean migrations run lint format sync-db sync-db-dry sync-db-status sync-db-reset sync-db-test-up sync-db-test-down sync-db-test-sync sync-db-test-drop
 
 help:
 	@echo "Expense tracker app - Development Commands"
@@ -24,10 +24,17 @@ help:
 	@echo "Utilities:"
 	@echo "  make clean        Remove pycache and build files"
 	@echo ""
-	@echo "Database sync:"
-	@echo "  make sync-prod        Dump prod PG and restore into local Docker DB"
-	@echo "                       (requires PROD_URL; append ARGS='--keep-dump --jobs 8')"
-	@echo "  make sync-prod-dry    Preview sync-prod commands without running them"
+	@echo "Database sync (bidirectional, incremental, rollback-safe):"
+	@echo "  make sync-db          Sync local Docker DB <-> prod (requires PROD_URL)"
+	@echo "  make sync-db-dry      Preview sync-db without writing"
+	@echo "  make sync-db-status   Print per-table sync watermarks on both sides"
+	@echo "  make sync-db-reset    Reset watermarks to epoch (next run scans fully)"
+	@echo "                        Append ARGS='--keep-dump --jobs 8 --verbose'"
+	@echo ""
+	@echo "Sync test harness (isolated 'prod' on port 5433, never touches real DB):"
+	@echo "  make sync-db-test-up     Start a throwaway test Postgres on port 5433"
+	@echo "  make sync-db-test-sync   Run sync-db-dry against the test container"
+	@echo "  make sync-db-test-drop   Stop and remove the test container"
 
 install:
 	uv sync --no-dev
@@ -68,28 +75,101 @@ db-init:
 	uv run alembic current
 
 # ----------------------------------------------------------------------------
-# Database sync: prod -> local Docker
+# Bidirectional DB sync: local Docker <-> prod
 #
 # Usage:
-#   make sync-prod PROD_URL='postgres://user:pass@host:5432/db'
-#   make sync-prod PROD_URL='postgres://user:pass@host:5432/db' ARGS='--keep-dump'
-#   make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+#   make sync-db        PROD_URL='postgres://user:pass@host:5432/db'
+#   make sync-db-dry    PROD_URL='postgres://user:pass@host:5432/db'
+#   make sync-db-status
+#   make sync-db-reset  PROD_URL='postgres://user:pass@host:5432/db'
 #
-# Local DB settings are read from .env (POSTGRES_DB/USER/PASSWORD).
-# The dump is written to /tmp and deleted after restore unless --keep-dump.
+# Local settings come from .env (POSTGRES_DB/USER/PASSWORD).
+# Both DBs are dumped to /tmp before any mutation; restored on failure.
+# Append ARGS='--keep-dump --jobs 8 --verbose' to tune.
 # ----------------------------------------------------------------------------
-sync-prod:
+sync-db:
 	@if [ -z "$(PROD_URL)" ]; then \
 		echo "ERROR: PROD_URL is required."; \
-		echo "  make sync-prod PROD_URL='postgres://user:pass@host:5432/db'"; \
+		echo "  make sync-db PROD_URL='postgres://user:pass@host:5432/db'"; \
 		exit 1; \
 	fi
-	@PROD_URL='$(PROD_URL)' ./scripts/sync-prod.sh $(ARGS)
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-db.sh $(ARGS)
 
-sync-prod-dry:
+sync-db-dry:
 	@if [ -z "$(PROD_URL)" ]; then \
 		echo "ERROR: PROD_URL is required."; \
-		echo "  make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'"; \
+		echo "  make sync-db-dry PROD_URL='postgres://user:pass@host:5432/db'"; \
 		exit 1; \
 	fi
-	@PROD_URL='$(PROD_URL)' ./scripts/sync-prod.sh --dry-run $(ARGS)
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-db.sh --dry-run $(ARGS)
+
+sync-db-status:
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-db.sh --status $(ARGS)
+
+sync-db-reset:
+	@if [ -z "$(PROD_URL)" ]; then \
+		echo "ERROR: PROD_URL is required."; \
+		echo "  make sync-db-reset PROD_URL='postgres://user:pass@host:5432/db'"; \
+		exit 1; \
+	fi
+	@PROD_URL='$(PROD_URL)' ./scripts/sync-db.sh --reset-watermark $(ARGS)
+
+# ----------------------------------------------------------------------------
+# Sync test harness
+#
+# Spins up an isolated Postgres 18 container on 127.0.0.1:5433 that acts as
+# 'prod' for sync testing. Different port, different DB name, different
+# container — your real local DB on 5432 is never touched.
+# ----------------------------------------------------------------------------
+TEST_CONTAINER := fintrack-test-prod
+TEST_PORT      := 5433
+TEST_USER      := fastapi
+TEST_PASSWORD  := password
+TEST_DB        := fintrack_test
+# Note: TEST_URL uses `postgresql://` (psycopg2 dialect) so alembic accepts it
+# directly. The sync script itself accepts both `postgres://` and `postgresql://`.
+TEST_URL       := postgresql://$(TEST_USER):$(TEST_PASSWORD)@localhost:$(TEST_PORT)/$(TEST_DB)
+
+sync-db-test-up:
+	@if docker ps --format '{{.Names}}' | grep -qx "$(TEST_CONTAINER)"; then \
+		echo "$(TEST_CONTAINER) already running on port $(TEST_PORT)"; \
+		echo "If migrations are missing, run:"; \
+		echo "  DATABASE_URL='$(TEST_URL)' uv run alembic upgrade head"; \
+	else \
+		echo "==> Starting isolated test Postgres on 127.0.0.1:$(TEST_PORT)"; \
+		docker run -d --name $(TEST_CONTAINER) \
+		  -e POSTGRES_USER=$(TEST_USER) \
+		  -e POSTGRES_PASSWORD=$(TEST_PASSWORD) \
+		  -e POSTGRES_DB=$(TEST_DB) \
+		  -p 127.0.0.1:$(TEST_PORT):5432 \
+		  postgres:18-alpine; \
+		echo "==> Waiting for Postgres to be ready..."; \
+		for i in 1 2 3 4 5 6 7 8 9 10; do \
+		  if docker exec $(TEST_CONTAINER) pg_isready -U $(TEST_USER) -d $(TEST_DB) >/dev/null 2>&1; then \
+		    echo "    ready."; break; \
+		  fi; \
+		  sleep 1; \
+		done; \
+		echo "==> Applying migrations to test DB"; \
+		DATABASE_URL='$(TEST_URL)' uv run alembic upgrade head; \
+		echo ""; \
+		echo "Test 'prod' is ready at $(TEST_URL)"; \
+		echo "Run 'make sync-db-test-sync' to dry-run, or:"; \
+		echo "  PROD_URL='$(TEST_URL)' make sync-db"; \
+	fi
+
+sync-db-test-sync:
+	@PROD_URL='$(TEST_URL)' ./scripts/sync-db.sh --dry-run --verbose $(ARGS)
+
+sync-db-test-drop:
+	@if docker ps -a --format '{{.Names}}' | grep -qx "$(TEST_CONTAINER)"; then \
+		echo "==> Stopping and removing $(TEST_CONTAINER)"; \
+		docker stop $(TEST_CONTAINER) >/dev/null; \
+		docker rm $(TEST_CONTAINER) >/dev/null; \
+		echo "==> Cleaning up any leftover sync dumps"; \
+		rm -f /tmp/fintrack-sync-*.dump; \
+		rm -rf /tmp/fintrack-sync-*.dump.dir; \
+		echo "Done."; \
+	else \
+		echo "$(TEST_CONTAINER) is not running."; \
+	fi

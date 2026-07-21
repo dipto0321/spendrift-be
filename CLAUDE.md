@@ -281,6 +281,21 @@ make test                # Run pytest
 make lint                # ruff + mypy
 ```
 
+### Bidirectional DB Sync
+
+```bash
+make sync-db          PROD_URL='postgres://user:pass@host:5432/db'
+make sync-db-dry      PROD_URL='postgres://user:pass@host:5432/db'
+make sync-db-status   PROD_URL='postgres://user:pass@host:5432/db'  # show watermarks
+make sync-db-reset    PROD_URL='postgres://user:pass@host:5432/db'
+```
+
+Syncs tables with `updated_at` columns (`users`, `trackers`, `categories`,
+`expenses`, `budgets`, `category_budgets`, `user_preferences`) bidirectionally.
+Backs up BOTH DBs to `/tmp` before any mutation and restores them on failure.
+Deletes are never propagated (INSERT-only). Conflict policy: latest
+`updated_at` wins.
+
 ---
 
 ## Implementation Order
