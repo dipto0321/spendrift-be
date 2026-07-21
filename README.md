@@ -82,38 +82,38 @@ make clean          # Remove __pycache__, .pytest_cache, .mypy_cache, htmlcov/
 
 ### Database sync (prod <-> local Docker)
 
-These targets live behind the Makefile so the URL never lands on disk and the
-local DB credentials stay in `.env`. See [`docs/SCRIPTS_REVIEW.md`](docs/SCRIPTS_REVIEW.md)
-for a full audit of the scripts and their safety guarantees.
+Bidirectional, incremental, rollback-safe sync between the local Docker DB and
+prod. These targets live behind the Makefile so the prod URL never lands on
+disk and the local DB credentials stay in `.env`.
 
 ```bash
-# Pull a fresh dump from prod into your local Docker DB (replace local fully)
-make sync-prod PROD_URL='postgres://user:pass@host:5432/db'
+# Sync both directions (newer updated_at wins, INSERT-only, no deletes)
+make sync-db PROD_URL='postgres://user:pass@host:5432/db'
 
-# Preview without touching anything (dry run)
-make sync-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+# Preview without writing anything (dry run)
+make sync-db-dry PROD_URL='postgres://user:pass@host:5432/db'
 
-# Push only NEW rows from local Docker DB into prod (with backup)
-make push-prod PROD_URL='postgres://user:pass@host:5432/db'
+# Show per-table sync watermarks on both sides
+make sync-db-status PROD_URL='postgres://user:pass@host:5432/db'
 
-# Preview a push (dry run, no backup, no confirmation)
-make push-prod-dry PROD_URL='postgres://user:pass@host:5432/db'
+# Reset watermarks to epoch (next run scans fully)
+make sync-db-reset PROD_URL='postgres://user:pass@host:5432/db'
 ```
 
 Optional flags are forwarded via `ARGS='...'`:
 
 ```bash
-make sync-prod     PROD_URL='...' ARGS='--keep-dump --jobs 8'
-make push-prod     PROD_URL='...' ARGS='--yes --exclude-tables=expenses'
-make push-prod-dry PROD_URL='...' ARGS='--tables=categories,trackers'
+make sync-db PROD_URL='...' ARGS='--keep-dump --jobs 8 --verbose'
+make sync-db PROD_URL='...' ARGS='--table expenses'
 ```
 
-Safety features baked into `push-prod`:
-- Automatic prod backup before any insert (kept at `/tmp/fintrack-prod-backup-*.dump`)
-- Schema pre-check that aborts if local has columns prod doesn't
-- `ON CONFLICT DO NOTHING` — never overwrites existing rows
-- `refresh_tokens` and `alembic_version` are excluded by default
-- `--yes` flag for CI / non-interactive use
+Safety features baked into `sync-db`:
+
+- Refuses to run unless both DBs are on the same Alembic revision
+- Backs up BOTH DBs to `/tmp` before any mutation; auto-restores on failure
+- Deletes are never propagated (INSERT-only); conflicts resolve to the latest `updated_at`
+- Idempotent and resumable via the `sync_state` watermark table
+- Isolated test harness: `make sync-db-test-up` / `sync-db-test-sync` / `sync-db-test-drop` (throwaway Postgres on port 5433)
 
 ## Screenshots
 
@@ -228,7 +228,7 @@ backend/
 │   └── reports/          # Detailed reports
 ├── alembic/              # Database migrations
 ├── tests/                # Pytest suite
-├── scripts/              # Prod ↔ local DB sync (sync-prod.sh, push-to-prod.sh)
+├── scripts/              # Prod ↔ local bidirectional DB sync (sync-db.sh, sync_db.py)
 ├── docs/                 # ARCHITECTURE.md, SCRIPTS_REVIEW.md, screenshots/
 ├── docker-compose.yml
 ├── Makefile

@@ -288,31 +288,21 @@ make format              # ruff format + ruff check --fix
 make clean               # Remove __pycache__, htmlcov/, .pytest_cache, .mypy_cache
 ```
 
-## Database Sync Scripts
+### Bidirectional DB Sync
 
-The `scripts/` directory holds two production-safety scripts. They are
-intentionally bypassed by `.gitignore`'s `*.dump` rule (dumps stay in `/tmp`).
+```bash
+make sync-db          PROD_URL='postgres://user:pass@host:5432/db'
+make sync-db-dry      PROD_URL='postgres://user:pass@host:5432/db'
+make sync-db-status   PROD_URL='postgres://user:pass@host:5432/db'  # show watermarks
+make sync-db-reset    PROD_URL='postgres://user:pass@host:5432/db'
+```
 
-**`scripts/sync-prod.sh`** — dumps prod and replaces local Docker DB.
-- Flags: `--keep-dump`, `--jobs N`, `--dry-run`
-- Uses `PGPASSWORD` env var so the password never appears in argv
-- Has explicit preflight checks for `pg_dump`/`pg_restore`/`psql` and local DB connectivity
-- Defaults to `backend-db-1` container; override with `LOCAL_CONTAINER=...`
-
-**`scripts/push-to-prod.sh`** — pushes NEW rows from local Docker DB to prod.
-- Flags: `--dry-run`, `--skip-backup`, `--yes`, `--tables t1,t2`, `--exclude-tables t1,t2`, `--force`
-- Schema pre-check aborts the push if local has columns that prod doesn't
-- Timezone-safe comparisons (`AT TIME ZONE 'UTC'`)
-- `ON_ERROR_STOP=1` with full psql log written to `/tmp/fintrack-push-*.log`
-- `refresh_tokens` and `alembic_version` are excluded by default
-- Production backup kept at `/tmp/fintrack-prod-backup-*.dump`
-
-Always run `make <target>-dry` first to preview. See
-[`docs/SCRIPTS_REVIEW.md`](docs/SCRIPTS_REVIEW.md) for the full audit log
-and rationale behind the safety guarantees.
-
-The Makefile wires these as `make sync-prod`, `make push-prod`, etc., so the
-prod URL stays on the command line and never lands on disk.
+Syncs tables with `updated_at` columns (`users`, `trackers`, `categories`,
+`expenses`, `budgets`, `category_budgets`, `user_preferences`) bidirectionally.
+Backs up BOTH DBs to `/tmp` before any mutation and restores them on failure.
+Deletes are never propagated (INSERT-only). Conflict policy: latest
+`updated_at` wins. `PROD_URL` stays on the command line and never lands on
+disk. This replaces the old one-way `sync-prod.sh` / `push-to-prod.sh` scripts.
 
 ---
 
