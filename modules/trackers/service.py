@@ -49,7 +49,19 @@ def update_tracker(
 
 
 def delete_tracker(session: Session, tracker_id: UUID, user_id: UUID) -> None:
-    """Delete a tracker the user owns."""
+    """Delete a tracker the user owns.
+
+    Refuses to delete the user's last tracker — every user must keep at least
+    one workspace. The check is done after ownership verification so a 404
+    still wins for trackers the caller doesn't own (don't leak existence).
+    """
     tracker = get_tracker_or_404(session, tracker_id, user_id)
+
+    if tracker_repo.count_trackers_by_user(session, user_id) <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You must keep at least one tracker.",
+        )
+
     tracker_repo.delete_tracker(session, tracker)
     logger.info("Tracker deleted: %s for user %s", tracker_id, user_id)
