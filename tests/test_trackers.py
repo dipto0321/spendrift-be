@@ -46,9 +46,7 @@ def test_currency_validation(client: TestClient, auth_headers):
         assert response.status_code == 422, bad
 
 
-def test_list_only_own_trackers(
-    client: TestClient, auth_headers, other_auth_headers
-):
+def test_list_only_own_trackers(client: TestClient, auth_headers, other_auth_headers):
     _create(client, auth_headers, name="Mine")
     _create(client, other_auth_headers, name="Theirs")
 
@@ -57,6 +55,9 @@ def test_list_only_own_trackers(
 
 
 def test_get_update_delete_tracker(client: TestClient, auth_headers):
+    # Need a second tracker so the first is allowed to be deleted
+    # (a user must always keep at least one tracker).
+    _create(client, auth_headers, name="Backup")
     created = _create(client, auth_headers)
     url = f"{TRACKERS_URL}/{created['id']}"
 
@@ -79,7 +80,9 @@ def test_other_user_cannot_access_tracker(
 
     assert client.get(url, headers=other_auth_headers).status_code == 404
     assert (
-        client.patch(url, json={"name": "Hacked"}, headers=other_auth_headers).status_code
+        client.patch(
+            url, json={"name": "Hacked"}, headers=other_auth_headers
+        ).status_code
         == 404
     )
     assert client.delete(url, headers=other_auth_headers).status_code == 404
@@ -88,7 +91,10 @@ def test_other_user_cannot_access_tracker(
 def test_delete_tracker_cascades_categories_and_expenses(
     client: TestClient, session: Session, auth_headers
 ):
-    created = _create(client, auth_headers)
+    # Need a second tracker so the first one is allowed to be deleted
+    # (a user must always keep at least one tracker).
+    _create(client, auth_headers, name="Backup")
+    created = _create(client, auth_headers, name="Target")
     tracker_id = created["id"]
 
     categories = session.exec(
@@ -106,9 +112,10 @@ def test_delete_tracker_cascades_categories_and_expenses(
     )
     assert response.status_code == 201
 
-    assert client.delete(
-        f"{TRACKERS_URL}/{tracker_id}", headers=auth_headers
-    ).status_code == 204
+    assert (
+        client.delete(f"{TRACKERS_URL}/{tracker_id}", headers=auth_headers).status_code
+        == 204
+    )
 
     session.expire_all()
     assert (
@@ -122,6 +129,69 @@ def test_delete_tracker_cascades_categories_and_expenses(
             select(Expense).where(Expense.tracker_id == UUID(tracker_id))
         ).all()
         == []
+    )
+
+
+def test_cannot_delete_last_tracker(client: TestClient, auth_headers):
+    """A user must always have at least one tracker."""
+    created = _create(client, auth_headers)
+    tracker_id = created["id"]
+
+    response = client.delete(f"{TRACKERS_URL}/{tracker_id}", headers=auth_headers)
+    assert response.status_code == 409
+    assert "at least one tracker" in response.json()["detail"].lower()
+
+    # Tracker still exists after the failed delete.
+    assert (
+        client.get(f"{TRACKERS_URL}/{tracker_id}", headers=auth_headers).status_code
+        == 200
+    )
+
+
+def test_can_delete_tracker_when_user_has_multiple(client: TestClient, auth_headers):
+    first = _create(client, auth_headers, name="First")
+    _create(client, auth_headers, name="Second")
+
+    response = client.delete(f"{TRACKERS_URL}/{first['id']}", headers=auth_headers)
+    assert response.status_code == 204
+    assert (
+        client.get(f"{TRACKERS_URL}/{first['id']}", headers=auth_headers).status_code
+        == 404
+    )
+
+
+def test_last_tracker_check_is_scoped_per_user(
+    client: TestClient, auth_headers, other_auth_headers
+):
+    """User A's last-tracker failure must not block user B from deleting one of theirs.
+
+    Setup: Alice has a single tracker (delete → 409). Bob has two trackers
+    (delete one → 204). The 409 for Alice does not freeze Bob's workspace.
+    """
+    _create(client, auth_headers, name="Mine")  # Alice: 1 tracker
+    bob_first = _create(client, other_auth_headers, name="Bob1")
+    bob_second = _create(client, other_auth_headers, name="Bob2")  # Bob: 2
+
+    # Alice — single tracker → 409
+    alice_id = client.get(TRACKERS_URL, headers=auth_headers).json()[0]["id"]
+    assert (
+        client.delete(f"{TRACKERS_URL}/{alice_id}", headers=auth_headers).status_code
+        == 409
+    )
+
+    # Bob — has two → can delete one of them (and the count check is per-user)
+    assert (
+        client.delete(
+            f"{TRACKERS_URL}/{bob_first['id']}", headers=other_auth_headers
+        ).status_code
+        == 204
+    )
+    # Bob's other tracker is unaffected by Alice's failed delete
+    assert (
+        client.get(
+            f"{TRACKERS_URL}/{bob_second['id']}", headers=other_auth_headers
+        ).status_code
+        == 200
     )
 
 

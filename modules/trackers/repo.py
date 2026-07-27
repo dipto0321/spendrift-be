@@ -3,7 +3,7 @@
 from typing import Sequence
 from uuid import UUID
 
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from modules.trackers.model import Tracker
 from modules.trackers.schema import TrackerCreate, TrackerUpdate
@@ -30,6 +30,14 @@ def get_tracker_by_id(session: Session, tracker_id: UUID) -> Tracker | None:
 def list_trackers_by_user(session: Session, user_id: UUID) -> Sequence[Tracker]:
     """List all trackers belonging to a user."""
     return session.exec(select(Tracker).where(Tracker.user_id == user_id)).all()
+
+
+def count_trackers_by_user(session: Session, user_id: UUID) -> int:
+    """Count trackers owned by a user (DB-side count, not a `len()` over fetched rows)."""
+    statement = (
+        select(func.count()).select_from(Tracker).where(Tracker.user_id == user_id)
+    )
+    return int(session.exec(statement).one())
 
 
 def update_tracker(
