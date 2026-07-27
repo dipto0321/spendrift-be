@@ -15,12 +15,17 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import Session, func, select
 
+from modules.budgets.service import month_bounds
 from modules.categories.model import Category
 from modules.dashboard.schema import NeedsWantsSplit
 from modules.expenses.model import Expense
+from modules.expenses.schema import ExpenseType
 from modules.reports.schema import (
     AnalyticsSummary,
     CategoryBreakdownItem,
+    CategoryWithDelta,
+    LargestExpenseItem,
+    MonthlyInsightsSnapshot,
     PeriodSpend,
     ReportPeriod,
     YearComparisonItem,
@@ -32,9 +37,7 @@ logger = logging.getLogger(__name__)
 TWO_PLACES = Decimal("0.01")
 
 
-def _validate_range(
-    start_date: date_type | None, end_date: date_type | None
-) -> None:
+def _validate_range(start_date: date_type | None, end_date: date_type | None) -> None:
     if start_date and end_date and end_date < start_date:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -49,6 +52,33 @@ def _expense_filter(statement, tracker_id: UUID, start_date, end_date):
     if end_date is not None:
         statement = statement.where(Expense.date <= end_date)
     return statement
+
+
+def _prior_month(month: str) -> str:
+    """Return the `YYYY-MM` immediately before `month` (handles year rollover)."""
+    year, mon = int(month[:4]), int(month[5:7])
+    if mon == 1:
+        return f"{year - 1}-12"
+    return f"{year}-{mon - 1:02d}"
+
+
+def _delta_pct(current: Decimal, prior: Decimal) -> int:
+    """Integer percent change; positive means `current` is larger.
+
+    Returns 0 when prior is 0 (no comparison possible).
+    """
+    if prior <= 0:
+        return 0
+    raw = (current - prior) / prior * 100
+    return int(raw.to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def _month_inclusive_bounds(month: str) -> tuple[date_type, date_type]:
+    """`[first_of_month, last_of_month]` — the inclusive shape expected by
+    `_expense_filter` (which uses `<= end_date`).
+    """
+    start, exclusive_end = month_bounds(month)
+    return start, exclusive_end - timedelta(days=1)
 
 
 def get_summary(
@@ -251,3 +281,100 @@ def get_year_comparison(
         )
         for row in rows
     ]
+
+
+def get_monthly_insights_snapshot(
+    session: Session,
+    tracker_id: UUID,
+    user_id: UUID,
+    month: str,
+    top_n_categories: int = 5,
+    top_n_expenses: int = 3,
+) -> MonthlyInsightsSnapshot:
+    """Structured numeric snapshot of a single calendar month for the LLM.
+
+    Returns totals + prior-month deltas, the top N categories with deltas,
+    a needs/wants split, and the top N largest individual expenses. Pure
+    aggregation — no LLM work. The FE feeds this into a prompt and the
+    browser calls the provider directly (see /ai settings).
+
+    `month_bounds` returns `[first_of_month, first_of_next_month)`. The
+    helpers here expect an inclusive `[start, end]` shape (they use
+    `<= end_date`), so we use `_month_inclusive_bounds` instead.
+    """
+    tracker = tracker_service.get_tracker_or_404(session, tracker_id, user_id)
+
+    start, end = _month_inclusive_bounds(month)
+    prior_month = _prior_month(month)
+    prior_start, prior_end = _month_inclusive_bounds(prior_month)
+
+    # Totals — `get_summary` does one round-trip per call.
+    current_summary = get_summary(session, tracker_id, user_id, start, end)
+    prior_summary = get_summary(session, tracker_id, user_id, prior_start, prior_end)
+    needs_wants = get_needs_vs_wants(session, tracker_id, user_id, start, end)
+
+    # Per-category totals for current month.
+    current_breakdown = get_category_breakdown(session, tracker_id, user_id, start, end)
+    prior_breakdown = get_category_breakdown(
+        session, tracker_id, user_id, prior_start, prior_end
+    )
+    prior_by_category = {item.category_id: item.total for item in prior_breakdown}
+
+    # Top N categories by current-month total, with prior-month delta.
+    top_categories = [
+        CategoryWithDelta(
+            category_id=item.category_id,
+            category_name=item.category_name,
+            category_color=item.category_color,
+            current_total=item.total,
+            prior_total=prior_by_category.get(item.category_id, Decimal("0")),
+            delta_pct=_delta_pct(
+                item.total, prior_by_category.get(item.category_id, Decimal("0"))
+            ),
+            count=item.count,
+        )
+        for item in current_breakdown[:top_n_categories]
+    ]
+
+    # Top N largest individual expenses in the month.
+    expense_rows = session.exec(
+        _expense_filter(
+            select(
+                Expense.id,
+                Expense.amount,
+                Expense.date,
+                Expense.description,
+                Category.name,
+                Expense.type,
+            )
+            .join(Category, Category.id == Expense.category_id)  # type: ignore[arg-type]
+            .order_by(Expense.amount.desc())
+            .limit(top_n_expenses),
+            tracker_id,
+            start,
+            end,
+        )
+    ).all()
+    largest_expenses = [
+        LargestExpenseItem(
+            id=row[0],
+            amount=Decimal(row[1]),
+            date=row[2],
+            description=row[3],
+            category_name=row[4],
+            type=row[5] if isinstance(row[5], str) else ExpenseType(row[5]).value,
+        )
+        for row in expense_rows
+    ]
+
+    return MonthlyInsightsSnapshot(
+        tracker_id=tracker.id,
+        month=month,
+        currency=tracker.currency,
+        total=current_summary.total,
+        prior_total=prior_summary.total,
+        delta_pct=_delta_pct(current_summary.total, prior_summary.total),
+        top_categories=top_categories,
+        needs_wants=needs_wants,
+        largest_expenses=largest_expenses,
+    )
