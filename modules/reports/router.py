@@ -14,6 +14,8 @@ from modules.reports import service as report_service
 from modules.reports.schema import (
     AnalyticsSummary,
     CategoryBreakdownItem,
+    MonthlyInsightsRequest,
+    MonthlyInsightsSnapshot,
     PeriodSpend,
     ReportPeriod,
     YearComparisonItem,
@@ -88,3 +90,25 @@ def get_year_comparison(
 ):
     """Yearly spending totals across the tracker's history."""
     return report_service.get_year_comparison(session, tracker_id, current_user.id)
+
+
+@router.post("/monthly-insights", response_model=MonthlyInsightsSnapshot)
+def get_monthly_insights(
+    tracker_id: UUID,
+    payload: MonthlyInsightsRequest,
+    session: Annotated[Session, Depends(get_session)],
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    """Structured numeric snapshot of a single calendar month.
+
+    Pure aggregation — no LLM work. The FE feeds this into a prompt and
+    calls the provider directly from the browser using the user's own key.
+    """
+    return report_service.get_monthly_insights_snapshot(
+        session,
+        tracker_id,
+        current_user.id,
+        payload.month,
+        top_n_categories=payload.top_n_categories,
+        top_n_expenses=payload.top_n_expenses,
+    )
