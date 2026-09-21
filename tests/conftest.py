@@ -20,6 +20,7 @@ from modules.categories import repo as category_repo
 from modules.expenses.model import Expense  # noqa: F401
 from modules.preferences.model import UserPreference  # noqa: F401
 from modules.refresh_tokens.model import RefreshToken  # noqa: F401
+from modules.tax.model import TaxReport, TaxReportHead  # noqa: F401
 from modules.trackers.model import Tracker
 from modules.trackers.schema import TrackerCreate
 from modules.trackers import service as tracker_service

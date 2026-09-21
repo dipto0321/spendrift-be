@@ -48,6 +48,7 @@ from modules.category_budgets.model import CategoryBudget  # noqa: E402, F401
 from modules.expenses.model import Expense  # noqa: E402, F401
 from modules.preferences.model import UserPreference  # noqa: E402, F401
 from modules.refresh_tokens.model import RefreshToken  # noqa: E402, F401
+from modules.tax.model import TaxReport, TaxReportHead  # noqa: E402, F401
 from modules.trackers.model import Tracker  # noqa: E402, F401
 from modules.users.model import User  # noqa: E402, F401
 
@@ -71,6 +72,8 @@ SYNC_ORDER: tuple[str, ...] = (
     "category_budgets",
     "expenses",
     "user_preferences",
+    "tax_reports",
+    "tax_report_heads",
 )
 
 SYNC_STATE_TABLE = "sync_state"
