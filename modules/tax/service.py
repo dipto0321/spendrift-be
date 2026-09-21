@@ -119,7 +119,7 @@ def _sample_descriptions(
         .where(Expense.date >= start)
         .where(Expense.date <= end)
         .where(Expense.description.is_not(None))  # type: ignore[union-attr]
-        .order_by(Expense.amount.desc())
+        .order_by(Expense.amount.desc())  # type: ignore[attr-defined]
         .limit(5)
     ).all()
     return [str(r) for r in rows if r]
