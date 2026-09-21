@@ -224,3 +224,5 @@ app.db
 seed/*
 *.sql
 *.dump
+.commandcode/settings.json
+.commandcode/taste/taste.md

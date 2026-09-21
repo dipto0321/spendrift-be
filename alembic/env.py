@@ -22,6 +22,7 @@ from modules.category_budgets.model import CategoryBudget  # noqa
 from modules.expenses.model import Expense  # noqa
 from modules.preferences.model import UserPreference  # noqa
 from modules.refresh_tokens.model import RefreshToken  # noqa
+from modules.tax.model import TaxReport, TaxReportHead  # noqa
 from modules.trackers.model import Tracker  # noqa
 
 # Import all models to make them available to Alembic
