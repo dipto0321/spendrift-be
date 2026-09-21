@@ -51,7 +51,7 @@ def list_reports_by_tracker(session: Session, tracker_id: UUID) -> list[TaxRepor
         session.exec(
             select(TaxReport)
             .where(TaxReport.tracker_id == tracker_id)
-            .order_by(TaxReport.fiscal_year.desc())
+            .order_by(TaxReport.fiscal_year.desc())  # type: ignore[attr-defined]
         ).all()
     )
 

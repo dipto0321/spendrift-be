@@ -60,6 +60,14 @@ env (optional, defaults): `GEMINI_API_KEY`=None (AI endpoints 503 until set), `G
 
 - api.reports (`/trackers/{tracker_id}/reports`) — GET /summary, /spending?period=weekly|monthly|yearly, /category-breakdown, /needs-vs-wants, /year-comparison
 
+- api.tax (`/trackers/{tracker_id}/tax-reports`, persisted IT-10BB report):
+  - POST / {fiscal_year: "YYYY-YY"} → get-or-create TaxReport (200; 201 on first create); 422 bad fiscal_year; 502 LLM fail; 503 no GEMINI_API_KEY; rate limit 10/min/IP
+  - GET / → list of TaxReport summaries for the tracker
+  - GET /{fiscal_year} → existing TaxReport (404 if none)
+  - PATCH /{fiscal_year} {heads: [{head_code, amount}]} → manual head override, recomputes total_amount
+  - POST /{fiscal_year}/regenerate → force re-aggregation + re-classification (rate limit 10/min/IP)
+  - response heads always include 9 IT-10BB heads with category_allocations evidence
+
 - storage: `StorageBackend` protocol — `upload(file_key,data,content_type)`, `delete(file_key)`, `generate_presigned_url(file_key,expires_in)`. impl = S3-compatible (R2/MinIO/AWS), key prefix `{STORAGE_ENV}/...`. currently wired only to user avatars.
 
 ## §V INVARIANTS
@@ -90,6 +98,10 @@ V24: ∀ route ⊥ own rate-limit decorator → global default (60/min/IP) appli
 V25: LLM output = untrusted input: ∀ parsed row coerced field-by-field (bad type→need, bad date→default_date, amount ⊥ >0 or no description → row dropped); ⊥ raw LLM json passed to client
 V26: /ai/parse-expenses ⊥ write DB — persistence only via normal /expenses endpoints after user review (FE V18 mirror)
 V27: GEMINI_MODEL ! rolling alias (gemini-flash-latest) ⊥ pinned version — Google retires pinned models for new API keys (see B2)
+V28: ≤1 TaxReport per (tracker_id, fiscal_year) (UNIQUE); get-or-create returns existing without re-calling the LLM
+V29: IT-10BB heads are a fixed 9-element set; every report persists exactly 9 TaxReportHead rows (zeros included)
+V30: LLM classification output is untrusted — unknown categories dropped, unknown head codes coerced to other_expenses; all sums computed server-side from real amounts, never from LLM numbers
+V31: manual head override amount ≥ 0; personal_loan_interest and environmental_surcharge default to 0
 
 ## §T TASKS
 id|status|task|cites
@@ -109,6 +121,7 @@ T13|x|category_budgets module: per-category allocation (gh#5)|V17,V18,V19,V20,I.
 T14|x|preferences module: user_preferences table + GET/PUT (gh#16)|V22,I.preferences
 T15|x|budget_alerts module: per-category threshold status (gh#17)|V23,I.budget_alerts
 T16|x|ai module: POST /ai/parse-expenses smart-paste parsing (Gemini via app/core/llm)|V25,V26,I.ai
+T17|x|tax module: IT-10BB get-or-create + override + regenerate (Bangladesh income-year report)|V28,V29,V30,V31,I.tax
 
 ## §B BUGS
 id|date|cause|fix
